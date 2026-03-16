@@ -2,7 +2,7 @@
 
 A machine learning pipeline that predicts NCAA Tournament outcomes using historical game data from the [BallDontLie NCAAB API](https://ncaab.balldontlie.io). The model predicts point spreads for individual matchups, converts them to win probabilities, and simulates the full bracket 10,000 times via Monte Carlo to generate round-by-round advancement probabilities for every team in the field.
 
-**[View Live Predictions →](https://yourusername.github.io/MarchMadness2026/)**
+**[View Live Predictions →](https://anthonygheen.github.io/MarchMadness2026/)**
 
 ---
 
