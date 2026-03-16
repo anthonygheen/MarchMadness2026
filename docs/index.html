@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>March Madness 2025 — Model Predictions</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #0a0c10;
+    --surface:   #111318;
+    --border:    #1e2230;
+    --accent:    #e8ff47;
+    --accent2:   #47c8ff;
+    --text:      #e8eaf0;
+    --muted:     #555d70;
+    --hot:       #ff4757;
+    --warm:      #ffa502;
+    --cool:      #2ed573;
+    --r1:   #1a1f2e;
+    --r2:   #141926;
+    --r3:   #10141f;
+    --r4:   #0d1019;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Header ── */
+  header {
+    padding: 2rem 2.5rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-end;
+    gap: 2rem;
+    background: linear-gradient(180deg, #0d1020 0%, var(--bg) 100%);
+  }
+  header h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(2.2rem, 5vw, 3.8rem);
+    letter-spacing: 0.04em;
+    line-height: 1;
+    color: var(--accent);
+  }
+  header h1 span { color: var(--text); }
+  .header-meta {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+    line-height: 1.8;
+    padding-bottom: 0.25rem;
+  }
+  .header-meta strong { color: var(--accent2); }
+
+  /* ── Tabs ── */
+  .tabs {
+    display: flex;
+    gap: 0;
+    padding: 0 2.5rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .tab-btn {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.9rem 1.8rem;
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  /* ── Tab panels ── */
+  .panel { display: none; padding: 2rem 2.5rem; }
+  .panel.active { display: block; }
+
+  /* ── Loading state ── */
+  #loading {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 4rem 2.5rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+  .spinner {
+    width: 18px; height: 18px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Probability color helpers ── */
+  .prob-bar {
+    display: inline-block;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--accent);
+    opacity: 0.7;
+    vertical-align: middle;
+    margin-left: 6px;
+  }
+
+  /* ═══════════════════════════════════════
+     BRACKET TAB
+  ═══════════════════════════════════════ */
+  #bracket-panel {
+    overflow-x: auto;
+    padding: 1.5rem 2.5rem;
+  }
+
+  .bracket-wrapper {
+    display: flex;
+    gap: 0;
+    min-width: 1100px;
+    align-items: stretch;
+  }
+
+  .bracket-region {
+    margin-bottom: 2.5rem;
+  }
+
+  .region-label {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.1rem;
+    letter-spacing: 0.1em;
+    color: var(--accent2);
+    margin-bottom: 1rem;
+    padding-left: 0.5rem;
+    border-left: 3px solid var(--accent2);
+  }
+
+  /* Round columns */
+  .rounds-container {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .round-col {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 170px;
+  }
+
+  .round-header {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-align: center;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 4px;
+  }
+
+  .team-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 10px;
+    cursor: default;
+    transition: border-color 0.15s, transform 0.15s;
+    position: relative;
+  }
+  .team-card:hover {
+    border-color: var(--accent);
+    transform: translateX(2px);
+    z-index: 10;
+  }
+  .team-card.highlight {
+    border-color: var(--accent);
+    background: #141a0a;
+  }
+
+  .card-top {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+  .seed-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    font-weight: 500;
+    color: var(--bg);
+    background: var(--muted);
+    border-radius: 3px;
+    padding: 1px 5px;
+    min-width: 22px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+  .seed-badge.top4 { background: var(--accent); color: var(--bg); }
+  .seed-badge.mid  { background: var(--accent2); color: var(--bg); }
+
+  .team-name {
+    font-size: 0.78rem;
+    font-weight: 500;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 120px;
+  }
+
+  .card-probs {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .prob-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.62rem;
+    color: var(--muted);
+  }
+  .prob-val {
+    font-weight: 500;
+  }
+  .prob-val.high  { color: var(--accent); }
+  .prob-val.med   { color: var(--warm); }
+  .prob-val.low   { color: var(--cool); }
+  .prob-val.zero  { color: var(--muted); }
+
+  .champ-badge {
+    position: absolute;
+    top: -8px; right: 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    background: var(--accent);
+    color: var(--bg);
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-weight: 500;
+  }
+
+  /* full-width bracket layout */
+  .full-bracket {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 1.5rem;
+  }
+
+  /* ═══════════════════════════════════════
+     TABLE TAB
+  ═══════════════════════════════════════ */
+  .table-controls {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .search-box {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    width: 220px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .search-box:focus { border-color: var(--accent); }
+  .search-box::placeholder { color: var(--muted); }
+
+  .filter-select {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0.5rem 0.8rem;
+    border-radius: 4px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  .sort-hint {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin-left: auto;
+  }
+
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+  }
+
+  .data-table thead th {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-align: left;
+    padding: 0.7rem 1rem;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    white-space: nowrap;
+    user-select: none;
+  }
+  .data-table thead th:hover { color: var(--text); }
+  .data-table thead th.sorted { color: var(--accent); }
+  .data-table thead th .sort-arrow { margin-left: 4px; opacity: 0.5; }
+  .data-table thead th.sorted .sort-arrow { opacity: 1; }
+
+  .data-table tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+  }
+  .data-table tbody tr:hover { background: var(--surface); }
+
+  .data-table td {
+    padding: 0.65rem 1rem;
+    vertical-align: middle;
+  }
+
+  .td-team {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .td-seed {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--bg);
+    background: var(--muted);
+    border-radius: 3px;
+    padding: 1px 6px;
+    min-width: 26px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+  .td-seed.top4 { background: var(--accent); }
+  .td-seed.mid  { background: var(--accent2); }
+
+  .td-name { font-weight: 500; }
+
+  .td-region {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+  }
+
+  .prob-cell {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    text-align: right;
+    white-space: nowrap;
+  }
+  .prob-cell .pct { font-weight: 500; }
+  .prob-cell .bar {
+    display: inline-block;
+    height: 2px;
+    background: currentColor;
+    border-radius: 1px;
+    margin-left: 4px;
+    vertical-align: middle;
+    opacity: 0.5;
+  }
+
+  .champ-cell {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-align: right;
+  }
+
+  /* heatmap coloring */
+  .h-0  { color: var(--muted); }
+  .h-1  { color: #3d8b6e; }
+  .h-2  { color: #47a882; }
+  .h-3  { color: #52c496; }
+  .h-4  { color: var(--cool); }
+  .h-5  { color: var(--warm); }
+  .h-6  { color: #ff8c00; }
+  .h-7  { color: var(--hot); }
+  .h-8  { color: var(--accent); }
+
+  /* ── Footer ── */
+  footer {
+    margin-top: 4rem;
+    padding: 1.5rem 2.5rem;
+    border-top: 1px solid var(--border);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+    display: flex;
+    gap: 2rem;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>MARCH MADNESS <span>2025</span></h1>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:0.15em;color:var(--muted);margin-top:2px;">MODEL PREDICTIONS</div>
+  </div>
+  <div class="header-meta" id="header-stats">
+    <div>Loading predictions...</div>
+  </div>
+</header>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('bracket')">Bracket View</button>
+  <button class="tab-btn" onclick="switchTab('table')">Probability Table</button>
+</div>
+
+<div id="loading">
+  <div class="spinner"></div>
+  Loading bracket_predictions.csv ...
+</div>
+
+<div id="bracket-panel" class="panel" style="display:none;">
+  <div id="bracket-content"></div>
+</div>
+
+<div id="table-panel" class="panel" style="display:none;">
+  <div class="table-controls">
+    <input class="search-box" id="search" placeholder="Search team..." oninput="renderTable()">
+    <select class="filter-select" id="region-filter" onchange="renderTable()">
+      <option value="">All Regions</option>
+    </select>
+    <select class="filter-select" id="seed-filter" onchange="renderTable()">
+      <option value="">All Seeds</option>
+    </select>
+    <span class="sort-hint">Click column headers to sort</span>
+  </div>
+  <table class="data-table">
+    <thead>
+      <tr id="table-headers"></tr>
+    </thead>
+    <tbody id="table-body"></tbody>
+  </table>
+</div>
+
+<footer>
+  <span>Monte Carlo simulation — 10,000 iterations</span>
+  <span>Gradient Boosting model trained on 2015–2025 seasons</span>
+  <span>Neutral court adjustment applied</span>
+</footer>
+
+<script>
+// ─── State ───────────────────────────────────────────────────────────────────
+let allTeams = [];
+let sortCol  = 'Champion_prob';
+let sortDir  = -1;  // -1 = descending
+let activeTab = 'bracket';
+
+const ROUND_COLS = [
+  'Round of 64_prob',
+  'Round of 32_prob',
+  'Sweet 16_prob',
+  'Elite 8_prob',
+  'Final Four_prob',
+  'Champion_prob',
+];
+
+const ROUND_SHORT = {
+  'Round of 64_prob':  'R64',
+  'Round of 32_prob':  'R32',
+  'Sweet 16_prob':     'S16',
+  'Elite 8_prob':      'E8',
+  'Final Four_prob':   'F4',
+  'Champion_prob':     'WIN',
+};
+
+// ─── CSV Parser ───────────────────────────────────────────────────────────────
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  const headers = lines[0].split(',').map(h => h.trim());
+  return lines.slice(1).map(line => {
+    // Handle commas inside quoted fields
+    const vals = [];
+    let cur = '', inQ = false;
+    for (let c of line) {
+      if (c === '"') { inQ = !inQ; }
+      else if (c === ',' && !inQ) { vals.push(cur.trim()); cur = ''; }
+      else { cur += c; }
+    }
+    vals.push(cur.trim());
+    const obj = {};
+    headers.forEach((h, i) => {
+      const v = vals[i] ?? '';
+      obj[h] = isNaN(v) || v === '' ? v : parseFloat(v);
+    });
+    return obj;
+  });
+}
+
+// ─── Color helpers ────────────────────────────────────────────────────────────
+function probClass(p) {
+  if (p >= 0.25) return 'h-8';
+  if (p >= 0.18) return 'h-7';
+  if (p >= 0.12) return 'h-6';
+  if (p >= 0.08) return 'h-5';
+  if (p >= 0.05) return 'h-4';
+  if (p >= 0.02) return 'h-3';
+  if (p >= 0.01) return 'h-2';
+  if (p >  0)    return 'h-1';
+  return 'h-0';
+}
+
+function cardProbClass(p) {
+  if (p >= 0.20) return 'high';
+  if (p >= 0.08) return 'med';
+  if (p >= 0.01) return 'low';
+  return 'zero';
+}
+
+function fmtPct(p) {
+  if (p === 0 || p == null) return '—';
+  if (p < 0.001) return '<0.1%';
+  return (p * 100).toFixed(1) + '%';
+}
+
+function seedBadgeClass(seed) {
+  if (seed <= 4)  return 'top4';
+  if (seed <= 8)  return 'mid';
+  return '';
+}
+
+// ─── Tab switching ────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll('.tab-btn').forEach((b, i) => {
+    b.classList.toggle('active', ['bracket','table'][i] === tab);
+  });
+  document.getElementById('bracket-panel').style.display = tab === 'bracket' ? 'block' : 'none';
+  document.getElementById('table-panel').style.display   = tab === 'table'   ? 'block' : 'none';
+}
+
+// ─── Bracket render ───────────────────────────────────────────────────────────
+function renderBracket() {
+  const container = document.getElementById('bracket-content');
+
+  // Group teams by region
+  const regions = {};
+  allTeams.forEach(t => {
+    const r = t.region || 'Unknown';
+    if (!regions[r]) regions[r] = [];
+    regions[r].push(t);
+  });
+
+  // Find overall top champion prob for highlighting
+  const maxChamp = Math.max(...allTeams.map(t => t['Champion_prob'] || 0));
+
+  let html = '<div class="full-bracket">';
+
+  Object.entries(regions).sort(([a],[b]) => a.localeCompare(b)).forEach(([region, teams]) => {
+    const sorted = [...teams].sort((a,b) => (a.seed||99) - (b.seed||99));
+
+    html += `<div class="bracket-region">`;
+    html += `<div class="region-label">${region}</div>`;
+    html += `<div style="display:flex;flex-direction:column;gap:6px;">`;
+
+    sorted.forEach(t => {
+      const champ = t['Champion_prob'] || 0;
+      const ff    = t['Final Four_prob'] || 0;
+      const e8    = t['Elite 8_prob'] || 0;
+      const s16   = t['Sweet 16_prob'] || 0;
+      const r32   = t['Round of 32_prob'] || 0;
+      const r64   = t['Round of 64_prob'] || 0;
+
+      const isTop = champ >= maxChamp * 0.5;
+      const seedClass = seedBadgeClass(t.seed);
+
+      html += `<div class="team-card${isTop ? ' highlight' : ''}">`;
+      if (champ > 0.05) {
+        html += `<div class="champ-badge">${fmtPct(champ)} WIN</div>`;
+      }
+      html += `<div class="card-top">
+        <span class="seed-badge ${seedClass}">${t.seed}</span>
+        <span class="team-name" title="${t.team_name}">${t.team_name}</span>
+      </div>`;
+      html += `<div class="card-probs">`;
+
+      const rows = [
+        ['R64', r64], ['R32', r32], ['S16', s16],
+        ['E8',  e8],  ['F4',  ff],  ['WIN', champ],
+      ];
+      rows.forEach(([label, prob]) => {
+        const cls = cardProbClass(prob);
+        const barW = Math.round(prob * 80);
+        html += `<div class="prob-row">
+          <span>${label}</span>
+          <span class="prob-val ${cls}">
+            ${fmtPct(prob)}
+            ${prob > 0 ? `<span style="display:inline-block;width:${barW}px;height:2px;background:currentColor;border-radius:1px;margin-left:4px;vertical-align:middle;opacity:0.5;"></span>` : ''}
+          </span>
+        </div>`;
+      });
+
+      html += `</div></div>`;
+    });
+
+    html += `</div></div>`;
+  });
+
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+// ─── Table render ─────────────────────────────────────────────────────────────
+function renderTable() {
+  const search  = document.getElementById('search').value.toLowerCase();
+  const region  = document.getElementById('region-filter').value;
+  const seedF   = document.getElementById('seed-filter').value;
+
+  let data = allTeams.filter(t => {
+    if (search && !t.team_name.toLowerCase().includes(search)) return false;
+    if (region && t.region !== region) return false;
+    if (seedF  && String(t.seed) !== seedF) return false;
+    return true;
+  });
+
+  data.sort((a, b) => {
+    const av = a[sortCol] ?? -1;
+    const bv = b[sortCol] ?? -1;
+    return sortDir * (bv - av);
+  });
+
+  const tbody = document.getElementById('table-body');
+  tbody.innerHTML = data.map(t => {
+    const seedClass = seedBadgeClass(t.seed);
+    let html = `<tr>
+      <td>
+        <div class="td-team">
+          <span class="td-seed ${seedClass}">${t.seed}</span>
+          <span class="td-name">${t.team_name}</span>
+        </div>
+      </td>
+      <td class="td-region">${t.region}</td>`;
+
+    ROUND_COLS.forEach(col => {
+      const p = t[col] || 0;
+      const cls = probClass(p);
+      const barW = Math.round(p * 60);
+      if (col === 'Champion_prob') {
+        html += `<td class="champ-cell ${cls}">${fmtPct(p)}</td>`;
+      } else {
+        html += `<td class="prob-cell ${cls}">
+          <span class="pct">${fmtPct(p)}</span>
+          ${p > 0 ? `<span class="bar" style="width:${barW}px"></span>` : ''}
+        </td>`;
+      }
+    });
+
+    html += `</tr>`;
+    return html;
+  }).join('');
+}
+
+function buildTableHeaders() {
+  const cols = [
+    { key: 'team_name', label: 'Team' },
+    { key: 'region',    label: 'Region' },
+    ...ROUND_COLS.map(c => ({ key: c, label: ROUND_SHORT[c] })),
+  ];
+
+  document.getElementById('table-headers').innerHTML = cols.map(c => `
+    <th onclick="setSort('${c.key}')" class="${sortCol === c.key ? 'sorted' : ''}">
+      ${c.label}
+      <span class="sort-arrow">${sortCol === c.key ? (sortDir < 0 ? '↓' : '↑') : '↕'}</span>
+    </th>
+  `).join('');
+}
+
+function setSort(col) {
+  if (sortCol === col) { sortDir *= -1; }
+  else { sortCol = col; sortDir = -1; }
+  buildTableHeaders();
+  renderTable();
+}
+
+function buildFilters() {
+  const regions = [...new Set(allTeams.map(t => t.region))].sort();
+  const seeds   = [...new Set(allTeams.map(t => t.seed))].sort((a,b) => a-b);
+
+  const rSel = document.getElementById('region-filter');
+  regions.forEach(r => { rSel.innerHTML += `<option value="${r}">${r}</option>`; });
+
+  const sSel = document.getElementById('seed-filter');
+  seeds.forEach(s => { sSel.innerHTML += `<option value="${s}">Seed ${s}</option>`; });
+}
+
+// ─── Boot ─────────────────────────────────────────────────────────────────────
+async function init() {
+  try {
+    const resp = await fetch('bracket_predictions.csv');
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const text = await resp.text();
+    allTeams = parseCSV(text);
+
+    // Update header stats
+    const topChamp = [...allTeams].sort((a,b) =>
+      (b['Champion_prob']||0) - (a['Champion_prob']||0))[0];
+    const n = allTeams.length;
+    document.getElementById('header-stats').innerHTML = `
+      <div><strong>${n}</strong> teams in field</div>
+      <div>Favorite: <strong>${topChamp?.team_name}</strong> (${fmtPct(topChamp?.['Champion_prob']||0)})</div>
+      <div>Simulation: <strong>10,000</strong> Monte Carlo iterations</div>
+    `;
+
+    document.getElementById('loading').style.display = 'none';
+
+    buildFilters();
+    buildTableHeaders();
+    renderBracket();
+    renderTable();
+
+    // Show first tab
+    document.getElementById('bracket-panel').style.display = 'block';
+
+  } catch (err) {
+    document.getElementById('loading').innerHTML =
+      `<span style="color:var(--hot)">Error loading data: ${err.message}.<br>
+      Make sure bracket_predictions.csv is in the same folder as index.html (docs/).</span>`;
+  }
+}
+
+init();
+</script>
+</body>
+</html>
