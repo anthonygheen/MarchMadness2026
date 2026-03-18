@@ -5,17 +5,21 @@ Pulls the 2025 NCAA Tournament bracket from BallDontLie, joins current
 season team features, and runs a Monte Carlo simulation to estimate
 each team's probability of reaching every round.
 
-API bracket round numbering:
-  0 = First Four / play-in games
-  1 = Round of 64 (all first-round games)
-  2-6 don't exist yet in the API — simulated internally
+Round structure per region:
+  R64  (round 1): 16 teams, 8 games -> 8 winners enter R32
+  R32  (round 2): 8 teams,  4 games -> 4 winners enter S16
+  S16  (round 3): 4 teams,  2 games -> 2 winners enter E8
+  E8   (round 4): 2 teams,  1 game  -> 1 regional champion
+  F4   (round 5): 4 champs, 2 games -> 2 finalists
+  Chmp (round 6): 2 teams,  1 game  -> 1 champion
 
-Notes on 2025 bracket:
-  - region_id and region_label are null — regions derived from bracket_location
-  - Bracket may be incomplete (some regions missing games) — handled gracefully
-  - Every 8 bracket_location slots = one region
-  - Final Four handles 2, 3, or 4 regional champions
-  - Bracket endpoint paginates — full pull required for all 4 regions
+Key design: R64 is simulated game-by-game producing 8 winners.
+Those 8 winners are then paired sequentially for R32 (0 vs 1, 2 vs 3,
+etc.) which correctly implements the bracket structure:
+  Game 1 winner (1/16) vs Game 2 winner (8/9)
+  Game 3 winner (5/12) vs Game 4 winner (4/13)
+  Game 5 winner (6/11) vs Game 6 winner (3/14)
+  Game 7 winner (7/10) vs Game 8 winner (2/15)
 
 Usage:
   python predict_bracket.py [--data-dir data] [--model-dir models]
@@ -61,7 +65,7 @@ BASE_FEATURES = [
     "fg_pct", "fg3_pct", "ft_pct",
     "win_percentage", "conference_win_percentage",
     "home_wins", "home_losses", "away_wins", "away_losses",
-    "conference_wins", "conference_losses", "wins", "losses",
+    "conference_wins", "conference_losses",
     "ap_rank", "coach_rank", "is_ranked",
     "playoff_seed",
 ]
@@ -88,13 +92,6 @@ def get_headers() -> dict:
 # ---------------------------------------------------------------------------
 
 def pull_bracket(season: int) -> pd.DataFrame:
-    """
-    Pulls the full tournament bracket from BallDontLie with pagination.
-    The bracket endpoint returns 25 records per page by default — without
-    pagination only the first region's games are returned.
-
-    Returns a flat DataFrame with one row per bracket game slot.
-    """
     log.info("Pulling bracket for season %d ...", season)
 
     records = []
@@ -134,7 +131,6 @@ def pull_bracket(season: int) -> pd.DataFrame:
         time.sleep(RATE_LIMIT_SLEEP)
 
     log.info("Bracket API returned %d total records", len(records))
-
     if not records:
         raise RuntimeError(f"Bracket returned empty for season {season}.")
 
@@ -175,11 +171,9 @@ def pull_bracket(season: int) -> pd.DataFrame:
         sorted(df["round"].dropna().unique().tolist()),
         r64_count,
     )
-
     if r64_count < 32:
         log.warning(
-            "Only %d / 32 Round of 64 games found — bracket may be incomplete. "
-            "Run pull_bracket.py to check status before simulating.",
+            "Only %d / 32 Round of 64 games — bracket may be incomplete.",
             r64_count,
         )
 
@@ -226,7 +220,8 @@ def build_tournament_features(
     if missing:
         log.warning("%d bracket teams missing from features: %s", len(missing), missing)
 
-    log.info("Feature vectors: %d / %d bracket teams", len(tf_bracket), len(bracket_team_ids))
+    log.info("Feature vectors: %d / %d bracket teams",
+             len(tf_bracket), len(bracket_team_ids))
     return tf_bracket
 
 
@@ -244,11 +239,13 @@ def _add_conference_features(
         return tf
 
     g = g.merge(
-        conf_map.rename(columns={"team_id": "home_team_id", "conference_id": "home_conf_id"}),
+        conf_map.rename(columns={"team_id": "home_team_id",
+                                  "conference_id": "home_conf_id"}),
         on=["home_team_id", "season"], how="left"
     )
     g = g.merge(
-        conf_map.rename(columns={"team_id": "away_team_id", "conference_id": "away_conf_id"}),
+        conf_map.rename(columns={"team_id": "away_team_id",
+                                  "conference_id": "away_conf_id"}),
         on=["away_team_id", "season"], how="left"
     )
 
@@ -260,13 +257,11 @@ def _add_conference_features(
     nonconf_games = g[~g["is_conf_game"]]
 
     pace = (
-        conf_games.groupby("home_conf_id")["total_score"].mean()
-        .reset_index()
+        conf_games.groupby("home_conf_id")["total_score"].mean().reset_index()
         .rename(columns={"home_conf_id": "conference_id", "total_score": "conf_pace"})
     )
     depth = (
-        conf_games.groupby("home_conf_id")["abs_margin"].mean()
-        .reset_index()
+        conf_games.groupby("home_conf_id")["abs_margin"].mean().reset_index()
         .rename(columns={"home_conf_id": "conference_id", "abs_margin": "conf_depth"})
     )
 
@@ -279,9 +274,9 @@ def _add_conference_features(
     away_nc = away_nc.rename(columns={"away_conf_id": "conference_id"})
 
     strength = (
-        pd.concat([home_nc[["conference_id", "win"]], away_nc[["conference_id", "win"]]])
-        .groupby("conference_id")["win"].mean()
-        .reset_index()
+        pd.concat([home_nc[["conference_id", "win"]],
+                   away_nc[["conference_id", "win"]]])
+        .groupby("conference_id")["win"].mean().reset_index()
         .rename(columns={"win": "conf_strength"})
     )
 
@@ -338,7 +333,6 @@ def predict_win_prob(
     feat_ba = build_matchup_features(team_b_id, team_a_id, team_features)
 
     if feat_ab is None or feat_ba is None:
-        log.warning("Missing features for %d vs %d -- using 0.5", team_a_id, team_b_id)
         return 0.5
 
     try:
@@ -356,6 +350,78 @@ def predict_win_prob(
 
 
 # ---------------------------------------------------------------------------
+# Simulation helpers
+# ---------------------------------------------------------------------------
+
+def simulate_game(
+    a: int | None,
+    b: int | None,
+    rnd: int,
+    round_counts: dict,
+    win_prob_fn,
+) -> int | None:
+    """
+    Simulates a single game. Increments winner's round count.
+    Returns winning team_id.
+    """
+    if a is None and b is None:
+        return None
+    if a is None:
+        w = b
+    elif b is None:
+        w = a
+    else:
+        p = win_prob_fn(a, b)
+        w = a if np.random.random() < p else b
+
+    if w and w in round_counts:
+        round_counts[w][rnd] += 1
+
+    return w
+
+
+def simulate_rounds(
+    current: list,
+    n_rounds: int,
+    round_start: int,
+    round_counts: dict,
+    win_prob_fn,
+) -> list:
+    """
+    Simulates n_rounds of single-elimination starting from round_start.
+    Pairs sequentially: index 0 vs 1, 2 vs 3, etc.
+    Returns list of winners (half the size of input each round).
+    """
+    for rnd in range(round_start, round_start + n_rounds):
+        if len(current) <= 1:
+            break
+
+        next_round = []
+        i = 0
+        while i < len(current):
+            if i + 1 >= len(current):
+                # Odd team out — bye
+                bye = current[i]
+                next_round.append(bye)
+                if bye and bye in round_counts:
+                    round_counts[bye][rnd] += 1
+                break
+            w = simulate_game(
+                a            = current[i],
+                b            = current[i + 1],
+                rnd          = rnd,
+                round_counts = round_counts,
+                win_prob_fn  = win_prob_fn,
+            )
+            next_round.append(w)
+            i += 2
+
+        current = next_round
+
+    return current
+
+
+# ---------------------------------------------------------------------------
 # Monte Carlo simulation
 # ---------------------------------------------------------------------------
 
@@ -366,21 +432,31 @@ def simulate_bracket(
     n_simulations: int = 10_000,
 ) -> pd.DataFrame:
     """
-    Simulates the full tournament using the actual bracket structure.
+    Simulates the full tournament bracket.
 
-    API round numbering:
-      0 = First Four play-in games
-      1 = Round of 64
+    Region simulation (per region, per simulation):
+      1. Simulate each R64 game individually -> 8 winners
+      2. Pair those 8 winners for R32 (game 1 winner vs game 2 winner, etc.)
+      3. simulate_rounds for R32 (round 2) -> 4 teams
+      4. simulate_rounds for S16 (round 3) -> 2 teams
+      5. simulate_game for E8 (round 4)    -> 1 regional champion
 
-    region_id is null in the 2025 API — regions are derived from
-    bracket_location: every 8 consecutive slots = one region.
-
-    Final Four handles 2, 3, or 4 regional champions gracefully.
+    This correctly implements standard bracket pairing at every round.
     """
     log.info("Running %d Monte Carlo simulations ...", n_simulations)
 
-    playin_games = bracket[bracket["round"] == 0].copy().reset_index(drop=True)
-    r64_games    = bracket[bracket["round"] == 1].copy()
+    playin_games = (
+        bracket[bracket["round"] == 0]
+        .copy()
+        .sort_values("bracket_location")
+        .reset_index(drop=True)
+    )
+    r64_games = (
+        bracket[bracket["round"] == 1]
+        .copy()
+        .sort_values("bracket_location")
+        .reset_index(drop=True)
+    )
 
     if r64_games.empty:
         raise RuntimeError(
@@ -388,68 +464,133 @@ def simulate_bracket(
             f"Rounds present: {sorted(bracket['round'].unique().tolist())}"
         )
 
-    # Derive regions from bracket_location — every 8 slots = one region
-    r64_games = r64_games.sort_values("bracket_location").reset_index(drop=True)
-    r64_games["derived_region"] = (r64_games["bracket_location"] - 1) // 8
+    # ------------------------------------------------------------------
+    # Classify teams
+    # ------------------------------------------------------------------
+    r64_team_ids = set(
+        r64_games["home_team_id"].dropna().astype(int).tolist() +
+        r64_games["away_team_id"].dropna().astype(int).tolist()
+    )
 
+    active_playin = []
+    for _, row in playin_games.iterrows():
+        h_id = int(row["home_team_id"]) if pd.notna(row["home_team_id"]) else None
+        a_id = int(row["away_team_id"]) if pd.notna(row["away_team_id"]) else None
+
+        h_confirmed = h_id in r64_team_ids if h_id else False
+        a_confirmed = a_id in r64_team_ids if a_id else False
+
+        if h_confirmed or a_confirmed:
+            log.info("  Play-in already resolved (winner in R64): %s vs %s",
+                     row["home_team_name"], row["away_team_name"])
+            continue
+
+        active_playin.append({
+            "home_id":          h_id,
+            "away_id":          a_id,
+            "home_name":        row["home_team_name"],
+            "away_name":        row["away_team_name"],
+            "seed":             int(row["home_seed"]) if pd.notna(row["home_seed"]) else None,
+            "bracket_location": row["bracket_location"],
+        })
+
+    log.info("Active play-in games: %d", len(active_playin))
+
+    # ------------------------------------------------------------------
+    # Map play-in games to TBD slots by bracket_location order
+    # ------------------------------------------------------------------
+    tbd_slots = []
+    for _, row in r64_games.iterrows():
+        if pd.isna(row["home_team_id"]) or pd.isna(row["away_team_id"]):
+            tbd_slots.append(int(row["bracket_location"]))
+
+    active_playin.sort(key=lambda x: x["bracket_location"])
+    tbd_slots.sort()
+
+    tbd_to_playin_idx: dict[int, int] = {}
+    for i, loc in enumerate(tbd_slots):
+        if i < len(active_playin):
+            tbd_to_playin_idx[loc] = i
+
+    if tbd_to_playin_idx:
+        log.info("TBD slot mappings:")
+        for loc, idx in tbd_to_playin_idx.items():
+            g = active_playin[idx]
+            log.info("  bracket_location=%d -> %s vs %s",
+                     loc, g["home_name"], g["away_name"])
+
+    # ------------------------------------------------------------------
+    # Derive regions (every 8 bracket_location slots = one region)
+    # ------------------------------------------------------------------
+    r64_games["derived_region"] = (r64_games["bracket_location"] - 1) // 8
     regions = sorted(r64_games["derived_region"].unique().tolist())
+    region_labels = {r: f"Region {r + 1}" for r in regions}
+
     log.info(
         "Derived %d regions | games per region: %s",
         len(regions),
         r64_games.groupby("derived_region").size().to_dict(),
     )
 
-    region_bracket: dict[int, list] = {}
-    region_labels:  dict[int, str]  = {}
-
+    region_bracket: dict[int, list[dict]] = {}
     for region_id in regions:
-        rg = r64_games[r64_games["derived_region"] == region_id].sort_values("bracket_location")
+        rg = r64_games[
+            r64_games["derived_region"] == region_id
+        ].sort_values("bracket_location")
         matchups = []
         for _, row in rg.iterrows():
-            h = int(row["home_team_id"]) if pd.notna(row["home_team_id"]) else None
-            a = int(row["away_team_id"]) if pd.notna(row["away_team_id"]) else None
-            matchups.append((h, a, row["home_seed"], row["away_seed"]))
+            matchups.append({
+                "home_id":          int(row["home_team_id"]) if pd.notna(row["home_team_id"]) else None,
+                "away_id":          int(row["away_team_id"]) if pd.notna(row["away_team_id"]) else None,
+                "bracket_location": int(row["bracket_location"]),
+            })
         region_bracket[region_id] = matchups
-        region_labels[region_id]  = f"Region {region_id + 1}"
 
-    # Play-in lookup: (row_index, seed) -> [team_a_id, team_b_id]
-    playin_lookup: dict[tuple, list[int]] = {}
-    for idx, row in playin_games.iterrows():
-        key = (idx, int(row["home_seed"]))
-        participants = []
-        if pd.notna(row["home_team_id"]):
-            participants.append(int(row["home_team_id"]))
-        if pd.notna(row["away_team_id"]):
-            participants.append(int(row["away_team_id"]))
-        if participants:
-            playin_lookup[key] = participants
-
-    playin_team_ids: set[int] = set()
-    for participants in playin_lookup.values():
-        playin_team_ids.update(participants)
-
-    # Build team info for output
+    # ------------------------------------------------------------------
+    # Build team info
+    # ------------------------------------------------------------------
     team_info: dict[int, dict] = {}
-    for _, row in pd.concat([r64_games, playin_games]).iterrows():
-        for tid, name, seed, derived_region in [
-            (row["home_team_id"], row["home_team_name"],
-             row["home_seed"], row.get("derived_region")),
-            (row["away_team_id"], row["away_team_name"],
-             row["away_seed"], row.get("derived_region")),
+
+    for _, row in r64_games.iterrows():
+        region_num = int(row["derived_region"])
+        for tid, name, seed in [
+            (row["home_team_id"], row["home_team_name"], row["home_seed"]),
+            (row["away_team_id"], row["away_team_name"], row["away_seed"]),
         ]:
             if pd.notna(tid):
                 tid = int(tid)
                 if tid not in team_info:
-                    region_num = int(derived_region) if pd.notna(derived_region) else None
                     team_info[tid] = {
-                        "team_name": name,
-                        "seed":      seed,
-                        "region":    region_labels.get(region_num, "Play-In"),
+                        "team_name":   name,
+                        "seed":        seed,
+                        "region":      region_labels[region_num],
+                        "playin_only": False,
                     }
 
-    all_team_ids = list(team_info.keys())
+    for game in active_playin:
+        for tid, name in [
+            (game["home_id"], game["home_name"]),
+            (game["away_id"], game["away_name"]),
+        ]:
+            if tid and tid not in team_info:
+                team_info[tid] = {
+                    "team_name":   name,
+                    "seed":        game["seed"],
+                    "region":      "First Four",
+                    "playin_only": True,
+                }
 
+    all_team_ids = list(team_info.keys())
+    log.info(
+        "Teams tracked: %d total (%d play-in only, %d confirmed R64)",
+        len(all_team_ids),
+        sum(1 for t in team_info.values() if t["playin_only"]),
+        sum(1 for t in team_info.values() if not t["playin_only"]),
+    )
+
+    # ------------------------------------------------------------------
     # Precompute win probability cache
+    # ------------------------------------------------------------------
     log.info("Precomputing win probabilities for %d teams ...", len(all_team_ids))
     prob_cache: dict[tuple, float] = {}
     for i, a in enumerate(all_team_ids):
@@ -458,163 +599,207 @@ def simulate_bracket(
             prob_cache[(a, b)] = p
             prob_cache[(b, a)] = 1.0 - p
 
-    def win_prob(a, b):
+    def win_prob_fn(a, b):
         if a is None or b is None:
             return 0.5
         return prob_cache.get((a, b), 0.5)
 
-    def sample_winner(a, b):
-        if a is None and b is None:
-            return None
-        if a is None:
-            return b
-        if b is None:
-            return a
-        p = win_prob(a, b)
-        return a if np.random.random() < p else b
+    # ------------------------------------------------------------------
+    # Round counts
+    # round 0 = play-in appearance
+    # rounds 1-6 = R64 through Champion
+    # ------------------------------------------------------------------
+    round_counts = {tid: {r: 0 for r in range(0, 8)} for tid in all_team_ids}
 
-    # round_counts[team_id][round] where 1=R64 ... 6=Champion
-    round_counts = {tid: {r: 0 for r in range(1, 7)} for tid in all_team_ids}
+    for tid, info in team_info.items():
+        if info["playin_only"]:
+            round_counts[tid][0] = n_simulations
 
+    # ------------------------------------------------------------------
     # Simulation loop
+    # ------------------------------------------------------------------
     for sim in range(n_simulations):
         if sim % 2000 == 0 and sim > 0:
             log.info("  Simulation %d / %d ...", sim, n_simulations)
 
-        # Resolve play-in games
-        playin_winners: dict[tuple, int] = {}
-        for key, participants in playin_lookup.items():
-            w = sample_winner(participants[0], participants[1]) \
-                if len(participants) >= 2 else participants[0]
-            playin_winners[key] = w
+        # Step 1: Simulate play-in games
+        playin_results: list[int | None] = []
+        for game in active_playin:
+            h, a = game["home_id"], game["away_id"]
+            if h is None and a is None:
+                playin_results.append(None)
+                continue
+            if h is None:
+                w = a
+            elif a is None:
+                w = h
+            else:
+                p = win_prob_fn(h, a)
+                w = h if np.random.random() < p else a
+            playin_results.append(w)
+            # Play-in winner counts as entering R64
+            if w and w in round_counts:
+                round_counts[w][1] += 1
 
-        seed_winners_this_sim: dict[int, list[int]] = {}
-        for key, winner in playin_winners.items():
-            seed = key[1]
-            if seed not in seed_winners_this_sim:
-                seed_winners_this_sim[seed] = []
-            seed_winners_this_sim[seed].append(winner)
-
-        seed_winner_cursor: dict[int, int] = {}
-
-        def resolve(tid, seed):
-            seed_int = int(seed) if pd.notna(seed) else None
-
-            if tid is None:
-                if seed_int and seed_int in seed_winners_this_sim:
-                    idx = seed_winner_cursor.get(seed_int, 0)
-                    winners = seed_winners_this_sim[seed_int]
-                    w = winners[idx % len(winners)]
-                    seed_winner_cursor[seed_int] = idx + 1
-                    return w
-                return None
-
-            tid = int(tid)
-            if tid in playin_team_ids:
-                for key, participants in playin_lookup.items():
-                    if tid in participants:
-                        return playin_winners.get(key, tid)
-                return tid
-
-            return tid
-
-        # Simulate each region through Elite 8
+        # Step 2: Simulate each region -> 1 regional champion
         region_champions: list[int] = []
 
         for region_id, matchups in region_bracket.items():
-            seed_winner_cursor.clear()
 
-            current: list[int | None] = []
-            for h, a, h_seed, a_seed in matchups:
-                rh = resolve(h, h_seed)
-                ra = resolve(a, a_seed)
-                current.append(rh)
-                current.append(ra)
-                if rh and rh in round_counts:
-                    round_counts[rh][1] += 1
-                if ra and ra in round_counts:
-                    round_counts[ra][1] += 1
+            # --- R64: simulate each game, collect 8 winners ---
+            r64_winners: list[int | None] = []
 
-            # R32, Sweet 16, Elite 8
-            for rnd in range(2, 5):
-                if len(current) <= 1:
-                    break
-                next_round = []
-                for i in range(0, len(current) - 1, 2):
-                    w = sample_winner(current[i], current[i + 1])
-                    next_round.append(w)
-                    if w and w in round_counts:
-                        round_counts[w][rnd] += 1
-                # Bye for odd team in incomplete region
-                if len(current) % 2 == 1:
-                    bye = current[-1]
-                    next_round.append(bye)
-                    if bye and bye in round_counts:
-                        round_counts[bye][rnd] += 1
-                current = next_round
+            for m in matchups:
+                h   = m["home_id"]
+                a   = m["away_id"]
+                loc = m["bracket_location"]
 
-            if current:
-                region_champions.append(current[0])
+                # Substitute TBD slots with play-in winners
+                pi_idx = tbd_to_playin_idx.get(loc)
+                if h is None and pi_idx is not None and pi_idx < len(playin_results):
+                    h = playin_results[pi_idx]
+                if a is None and pi_idx is not None and pi_idx < len(playin_results):
+                    a = playin_results[pi_idx]
 
-        # Final Four — handle 2, 3, or 4 regional champions
-        ff_winners: list[int] = []
+                # Count R64 appearances for confirmed teams
+                for tid in [h, a]:
+                    if (tid and tid in round_counts
+                            and not team_info.get(tid, {}).get("playin_only")):
+                        round_counts[tid][1] += 1
 
-        if len(region_champions) == 4:
-            for i in range(0, 4, 2):
-                w = sample_winner(region_champions[i], region_champions[i + 1])
-                ff_winners.append(w)
-                if w and w in round_counts:
-                    round_counts[w][5] += 1
+                # Simulate R64 game — winner enters R32 (round 2)
+                w = simulate_game(
+                    a            = h,
+                    b            = a,
+                    rnd          = 2,
+                    round_counts = round_counts,
+                    win_prob_fn  = win_prob_fn,
+                )
+                r64_winners.append(w)
 
-        elif len(region_champions) == 3:
-            w1 = sample_winner(region_champions[0], region_champions[1])
-            if w1 and w1 in round_counts:
-                round_counts[w1][5] += 1
-            w2 = region_champions[2]
-            if w2 and w2 in round_counts:
-                round_counts[w2][5] += 1
-            ff_winners = [w1, w2]
+            # r64_winners is now [w1, w2, w3, w4, w5, w6, w7, w8]
+            # Pairing: w1 vs w2, w3 vs w4, w5 vs w6, w7 vs w8
+            # which gives: (1/16 winner) vs (8/9 winner), etc.
+            current = r64_winners
 
-        elif len(region_champions) == 2:
-            for w in region_champions:
-                if w and w in round_counts:
-                    round_counts[w][5] += 1
-            ff_winners = region_champions
+            # --- S16: simulate R32 winners ---
+            current = simulate_rounds(
+                current      = current,
+                n_rounds     = 1,
+                round_start  = 3,
+                round_counts = round_counts,
+                win_prob_fn  = win_prob_fn,
+            )
 
-        elif len(region_champions) == 1:
-            champ = region_champions[0]
-            if champ and champ in round_counts:
-                round_counts[champ][5] += 1
-                round_counts[champ][6] += 1
+            # --- E8: simulate S16 winners ---
+            current = simulate_rounds(
+                current      = current,
+                n_rounds     = 1,
+                round_start  = 4,
+                round_counts = round_counts,
+                win_prob_fn  = win_prob_fn,
+            )
+
+            # --- Regional final: simulate E8 winners -> 1 champion ---
+            if len(current) >= 2:
+                champion = simulate_game(
+                    a            = current[0],
+                    b            = current[1],
+                    rnd          = 5,
+                    round_counts = round_counts,
+                    win_prob_fn  = win_prob_fn,
+                )
+            elif len(current) == 1:
+                champion = current[0]
+                if champion and champion in round_counts:
+                    round_counts[champion][5] += 1
+            else:
+                champion = None
+
+            if champion is not None:
+                region_champions.append(champion)
+
+        # Step 3: Final Four semifinal (round 6) -> 2 finalists
+        if len(region_champions) < 2:
             continue
 
-        # Championship
-        if len(ff_winners) >= 2:
-            champ = sample_winner(ff_winners[0], ff_winners[1])
-            if champ and champ in round_counts:
-                round_counts[champ][6] += 1
-        elif len(ff_winners) == 1:
-            champ = ff_winners[0]
-            if champ and champ in round_counts:
-                round_counts[champ][6] += 1
+        ff_winners = simulate_rounds(
+            current      = region_champions,
+            n_rounds     = 1,
+            round_start  = 6,
+            round_counts = round_counts,
+            win_prob_fn  = win_prob_fn,
+        )
 
+        # Step 4: Championship (round 7 internally, shown as Champion)
+        if len(ff_winners) >= 2:
+            simulate_game(
+                a            = ff_winners[0],
+                b            = ff_winners[1],
+                rnd          = 7,
+                round_counts = round_counts,
+                win_prob_fn  = win_prob_fn,
+            )
+        elif len(ff_winners) == 1 and ff_winners[0] is not None:
+            if ff_winners[0] in round_counts:
+                round_counts[ff_winners[0]][7] += 1
+
+    # ------------------------------------------------------------------
     # Convert counts to probabilities
+    # ------------------------------------------------------------------
     results = []
     for tid, info in team_info.items():
-        row = {
-            "team_id":   tid,
-            "team_name": info["team_name"],
-            "seed":      info["seed"],
-            "region":    info["region"],
-        }
-        for rnd, name in ROUND_NAMES.items():
-            row[f"{name}_prob"] = round_counts[tid][rnd] / n_simulations
-        results.append(row)
+        results.append({
+            "team_id":          tid,
+            "team_name":        info["team_name"],
+            "seed":             info["seed"],
+            "region":           info["region"],
+            # round 1 = R64 appearance
+            # round 2 = won R64 (entered R32)
+            # round 3 = won R32 (entered S16)
+            # round 4 = won S16 (entered E8)
+            # round 5 = won E8 (regional champ / entered F4)
+            # round 6 = won F4 semifinal (entered championship)
+            # round 7 = won championship
+            "Round of 64_prob": round_counts[tid][1] / n_simulations,
+            "Round of 32_prob": round_counts[tid][2] / n_simulations,
+            "Sweet 16_prob":    round_counts[tid][3] / n_simulations,
+            "Elite 8_prob":     round_counts[tid][4] / n_simulations,
+            "Final Four_prob":  round_counts[tid][5] / n_simulations,
+            "Champion_prob":    round_counts[tid][7] / n_simulations,
+        })
 
     df = pd.DataFrame(results)
     df = df.sort_values(["region", "seed"]).reset_index(drop=True)
     log.info("Simulation complete.")
     return df
+
+
+# ---------------------------------------------------------------------------
+# Sanity check
+# ---------------------------------------------------------------------------
+
+def sanity_check(predictions: pd.DataFrame) -> None:
+    """
+    Champion probs should sum to ~1.0 (one champion per simulation).
+    Final Four probs should sum to ~4.0 (four teams reach F4 each sim).
+    R64 probs should sum to ~64.0 (all 64 teams play R64).
+    """
+    champ_sum = predictions["Champion_prob"].sum()
+    ff_sum    = predictions["Final Four_prob"].sum()
+    r64_sum   = predictions["Round of 64_prob"].sum()
+
+    log.info("Sanity check:")
+    log.info("  Champion probs sum:    %.3f (expect ~1.0)", champ_sum)
+    log.info("  Final Four probs sum:  %.3f (expect ~4.0)", ff_sum)
+    log.info("  Round of 64 probs sum: %.3f (expect ~64.0)", r64_sum)
+
+    if abs(champ_sum - 1.0) > 0.05:
+        log.warning("  Champion probs sum is off — check simulation logic.")
+    if abs(ff_sum - 4.0) > 0.2:
+        log.warning("  Final Four probs sum is off — check simulation logic.")
+    if abs(r64_sum - 64.0) > 1.0:
+        log.warning("  Round of 64 probs sum is off — check simulation logic.")
 
 
 # ---------------------------------------------------------------------------
@@ -627,7 +812,10 @@ def generate_report(predictions: pd.DataFrame, output_path: Path) -> None:
     lines.append("MARCH MADNESS 2025 -- MONTE CARLO BRACKET PREDICTIONS")
     lines.append("=" * 95)
 
-    round_cols = [f"{ROUND_NAMES[r]}_prob" for r in range(1, 7)]
+    round_cols = [
+        "Round of 64_prob", "Round of 32_prob", "Sweet 16_prob",
+        "Elite 8_prob", "Final Four_prob", "Champion_prob",
+    ]
     round_cols = [c for c in round_cols if c in predictions.columns]
 
     header = f"{'Team':<35} {'Seed':>4}  " + "  ".join(
@@ -660,8 +848,8 @@ def generate_report(predictions: pd.DataFrame, output_path: Path) -> None:
         for _, row in top10.iterrows():
             seed  = int(row["seed"]) if pd.notna(row["seed"]) else "?"
             champ = row.get(champ_col, 0) or 0
-            ff    = row.get(ff_col, 0) or 0
-            e8    = row.get(e8_col, 0) or 0
+            ff    = row.get(ff_col,    0) or 0
+            e8    = row.get(e8_col,    0) or 0
             lines.append(
                 f"  {str(row['team_name']):<30} "
                 f"({row['region']} {seed}-seed)  "
@@ -682,11 +870,10 @@ def generate_report(predictions: pd.DataFrame, output_path: Path) -> None:
 
 def parse_args():
     parser = argparse.ArgumentParser(description="March Madness bracket prediction")
-    parser.add_argument("--data-dir",    default="data",   help="Directory with parquet files")
-    parser.add_argument("--model-dir",   default="models", help="Directory with best_model.joblib")
+    parser.add_argument("--data-dir",    default="data")
+    parser.add_argument("--model-dir",   default="models")
     parser.add_argument("--simulations", type=int, default=10_000)
-    parser.add_argument("--season",      type=int, default=2025,
-                        help="Season year (2025 = 2025 tournament)")
+    parser.add_argument("--season",      type=int, default=2025)
     return parser.parse_args()
 
 
@@ -714,6 +901,7 @@ def main():
     predictions.to_csv(model_dir / "bracket_predictions.csv", index=False)
     log.info("Predictions saved -> %s/bracket_predictions.csv", args.model_dir)
 
+    sanity_check(predictions)
     generate_report(predictions, model_dir / "bracket_report.txt")
 
 
