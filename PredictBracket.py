@@ -15,6 +15,7 @@ Notes on 2025 bracket:
   - Bracket may be incomplete (some regions missing games) — handled gracefully
   - Every 8 bracket_location slots = one region
   - Final Four handles 2, 3, or 4 regional champions
+  - Bracket endpoint paginates — full pull required for all 4 regions
 
 Usage:
   python predict_bracket.py [--data-dir data] [--model-dir models]
@@ -82,36 +83,58 @@ def get_headers() -> dict:
     return {"Authorization": api_key}
 
 
-def api_get(endpoint: str, params: dict | None = None) -> dict:
-    url = f"{BASE_URL}/{endpoint}"
-    for attempt in range(5):
-        resp = requests.get(url, headers=get_headers(), params=params, timeout=30)
-        if resp.status_code == 429:
-            wait = 2 ** attempt
-            log.warning("Rate limited — sleeping %ds", wait)
-            time.sleep(wait)
-            continue
-        resp.raise_for_status()
-        return resp.json()
-    raise RuntimeError(f"Failed after retries: {url}")
-
-
 # ---------------------------------------------------------------------------
-# Pull bracket
+# Pull bracket — paginated
 # ---------------------------------------------------------------------------
 
 def pull_bracket(season: int) -> pd.DataFrame:
-    log.info("Pulling bracket for season %d ...", season)
-    try:
-        data = api_get("bracket", {"season": season})
-    except requests.HTTPError as e:
-        if e.response.status_code == 404:
-            raise RuntimeError(
-                f"Bracket not found for season {season}. Try --season 2025."
-            ) from e
-        raise
+    """
+    Pulls the full tournament bracket from BallDontLie with pagination.
+    The bracket endpoint returns 25 records per page by default — without
+    pagination only the first region's games are returned.
 
-    records = data.get("data", [])
+    Returns a flat DataFrame with one row per bracket game slot.
+    """
+    log.info("Pulling bracket for season %d ...", season)
+
+    records = []
+    params  = {"season": season, "per_page": 100}
+    cursor  = None
+
+    while True:
+        if cursor:
+            params["cursor"] = cursor
+
+        for attempt in range(5):
+            resp = requests.get(
+                f"{BASE_URL}/bracket",
+                headers=get_headers(),
+                params=params,
+                timeout=30,
+            )
+            if resp.status_code == 429:
+                wait = 2 ** attempt
+                log.warning("Rate limited — sleeping %ds", wait)
+                time.sleep(wait)
+                continue
+            if resp.status_code == 404:
+                raise RuntimeError(
+                    f"Bracket not found for season {season}. Try --season 2025."
+                )
+            resp.raise_for_status()
+            break
+
+        data = resp.json()
+        records.extend(data.get("data", []))
+        cursor = data.get("meta", {}).get("next_cursor")
+        if not cursor:
+            break
+
+        log.info("  Paginating — %d records so far ...", len(records))
+        time.sleep(RATE_LIMIT_SLEEP)
+
+    log.info("Bracket API returned %d total records", len(records))
+
     if not records:
         raise RuntimeError(f"Bracket returned empty for season {season}.")
 
@@ -145,8 +168,21 @@ def pull_bracket(season: int) -> pd.DataFrame:
     df["home_seed"] = pd.to_numeric(df["home_seed"], errors="coerce")
     df["away_seed"] = pd.to_numeric(df["away_seed"], errors="coerce")
 
-    log.info("Bracket: %d game slots | rounds present: %s",
-             len(df), sorted(df["round"].unique().tolist()))
+    r64_count = (df["round"] == 1).sum()
+    log.info(
+        "Bracket: %d total slots | rounds: %s | Round of 64 games: %d / 32",
+        len(df),
+        sorted(df["round"].dropna().unique().tolist()),
+        r64_count,
+    )
+
+    if r64_count < 32:
+        log.warning(
+            "Only %d / 32 Round of 64 games found — bracket may be incomplete. "
+            "Run pull_bracket.py to check status before simulating.",
+            r64_count,
+        )
+
     return df
 
 
@@ -332,15 +368,14 @@ def simulate_bracket(
     """
     Simulates the full tournament using the actual bracket structure.
 
-    Region derivation:
-      region_id is null in 2025 API so we derive regions from bracket_location.
-      Every 8 consecutive slots = one region (standard bracket structure).
-      Incomplete regions (< 8 games) are simulated with available games only.
+    API round numbering:
+      0 = First Four play-in games
+      1 = Round of 64
 
-    Final Four:
-      Handles 2, 3, or 4 regional champions gracefully.
-      If 3 champions: first two play a semifinal, third gets a bye.
-      If 2 champions: play directly for championship.
+    region_id is null in the 2025 API — regions are derived from
+    bracket_location: every 8 consecutive slots = one region.
+
+    Final Four handles 2, 3, or 4 regional champions gracefully.
     """
     log.info("Running %d Monte Carlo simulations ...", n_simulations)
 
@@ -353,18 +388,15 @@ def simulate_bracket(
             f"Rounds present: {sorted(bracket['round'].unique().tolist())}"
         )
 
-    # ------------------------------------------------------------------
-    # Derive regions from bracket_location
-    # Every 8 slots = one region; incomplete final region is kept as-is
-    # ------------------------------------------------------------------
+    # Derive regions from bracket_location — every 8 slots = one region
     r64_games = r64_games.sort_values("bracket_location").reset_index(drop=True)
     r64_games["derived_region"] = (r64_games["bracket_location"] - 1) // 8
 
     regions = sorted(r64_games["derived_region"].unique().tolist())
     log.info(
-        "Derived %d regions from bracket_location: %s",
+        "Derived %d regions | games per region: %s",
         len(regions),
-        r64_games.groupby("derived_region").size().to_dict()
+        r64_games.groupby("derived_region").size().to_dict(),
     )
 
     region_bracket: dict[int, list] = {}
@@ -380,9 +412,7 @@ def simulate_bracket(
         region_bracket[region_id] = matchups
         region_labels[region_id]  = f"Region {region_id + 1}"
 
-    # ------------------------------------------------------------------
-    # Play-in lookup: keyed by (row_index, seed) to keep games distinct
-    # ------------------------------------------------------------------
+    # Play-in lookup: (row_index, seed) -> [team_a_id, team_b_id]
     playin_lookup: dict[tuple, list[int]] = {}
     for idx, row in playin_games.iterrows():
         key = (idx, int(row["home_seed"]))
@@ -398,9 +428,7 @@ def simulate_bracket(
     for participants in playin_lookup.values():
         playin_team_ids.update(participants)
 
-    # ------------------------------------------------------------------
     # Build team info for output
-    # ------------------------------------------------------------------
     team_info: dict[int, dict] = {}
     for _, row in pd.concat([r64_games, playin_games]).iterrows():
         for tid, name, seed, derived_region in [
@@ -421,9 +449,7 @@ def simulate_bracket(
 
     all_team_ids = list(team_info.keys())
 
-    # ------------------------------------------------------------------
     # Precompute win probability cache
-    # ------------------------------------------------------------------
     log.info("Precomputing win probabilities for %d teams ...", len(all_team_ids))
     prob_cache: dict[tuple, float] = {}
     for i, a in enumerate(all_team_ids):
@@ -450,23 +476,18 @@ def simulate_bracket(
     # round_counts[team_id][round] where 1=R64 ... 6=Champion
     round_counts = {tid: {r: 0 for r in range(1, 7)} for tid in all_team_ids}
 
-    # ------------------------------------------------------------------
     # Simulation loop
-    # ------------------------------------------------------------------
     for sim in range(n_simulations):
         if sim % 2000 == 0 and sim > 0:
             log.info("  Simulation %d / %d ...", sim, n_simulations)
 
-        # Step 1: resolve play-in games
+        # Resolve play-in games
         playin_winners: dict[tuple, int] = {}
         for key, participants in playin_lookup.items():
-            if len(participants) >= 2:
-                w = sample_winner(participants[0], participants[1])
-            else:
-                w = participants[0]
+            w = sample_winner(participants[0], participants[1]) \
+                if len(participants) >= 2 else participants[0]
             playin_winners[key] = w
 
-        # seed -> list of winners this sim (may be multiple per seed e.g. two 11-seed games)
         seed_winners_this_sim: dict[int, list[int]] = {}
         for key, winner in playin_winners.items():
             seed = key[1]
@@ -474,14 +495,12 @@ def simulate_bracket(
                 seed_winners_this_sim[seed] = []
             seed_winners_this_sim[seed].append(winner)
 
-        # Counter to assign play-in winners to slots in order per region
         seed_winner_cursor: dict[int, int] = {}
 
         def resolve(tid, seed):
             seed_int = int(seed) if pd.notna(seed) else None
 
             if tid is None:
-                # TBD slot — assign next play-in winner for this seed
                 if seed_int and seed_int in seed_winners_this_sim:
                     idx = seed_winner_cursor.get(seed_int, 0)
                     winners = seed_winners_this_sim[seed_int]
@@ -492,7 +511,6 @@ def simulate_bracket(
 
             tid = int(tid)
             if tid in playin_team_ids:
-                # Find this team's play-in game and return that winner
                 for key, participants in playin_lookup.items():
                     if tid in participants:
                         return playin_winners.get(key, tid)
@@ -500,14 +518,12 @@ def simulate_bracket(
 
             return tid
 
-        # Step 2: simulate each region through Elite 8
+        # Simulate each region through Elite 8
         region_champions: list[int] = []
 
         for region_id, matchups in region_bracket.items():
-            # Reset cursor per region so each region gets its own play-in winners
             seed_winner_cursor.clear()
 
-            # Build R64 field
             current: list[int | None] = []
             for h, a, h_seed, a_seed in matchups:
                 rh = resolve(h, h_seed)
@@ -519,8 +535,7 @@ def simulate_bracket(
                 if ra and ra in round_counts:
                     round_counts[ra][1] += 1
 
-            # Simulate R32, Sweet 16, Elite 8 within this region
-            # Stop when we have one team left (regional champion)
+            # R32, Sweet 16, Elite 8
             for rnd in range(2, 5):
                 if len(current) <= 1:
                     break
@@ -530,23 +545,21 @@ def simulate_bracket(
                     next_round.append(w)
                     if w and w in round_counts:
                         round_counts[w][rnd] += 1
-                # If odd team out (incomplete region), give them a bye
+                # Bye for odd team in incomplete region
                 if len(current) % 2 == 1:
-                    bye_team = current[-1]
-                    next_round.append(bye_team)
-                    if bye_team and bye_team in round_counts:
-                        round_counts[bye_team][rnd] += 1
+                    bye = current[-1]
+                    next_round.append(bye)
+                    if bye and bye in round_counts:
+                        round_counts[bye][rnd] += 1
                 current = next_round
 
             if current:
                 region_champions.append(current[0])
 
-        # Step 3: Final Four
-        # Handle 2, 3, or 4 regional champions
+        # Final Four — handle 2, 3, or 4 regional champions
         ff_winners: list[int] = []
 
         if len(region_champions) == 4:
-            # Standard: two semifinals
             for i in range(0, 4, 2):
                 w = sample_winner(region_champions[i], region_champions[i + 1])
                 ff_winners.append(w)
@@ -554,7 +567,6 @@ def simulate_bracket(
                     round_counts[w][5] += 1
 
         elif len(region_champions) == 3:
-            # Two complete regions play a semifinal; third gets a bye to championship
             w1 = sample_winner(region_champions[0], region_champions[1])
             if w1 and w1 in round_counts:
                 round_counts[w1][5] += 1
@@ -564,21 +576,19 @@ def simulate_bracket(
             ff_winners = [w1, w2]
 
         elif len(region_champions) == 2:
-            # Both go straight to championship, both count as Final Four
             for w in region_champions:
                 if w and w in round_counts:
                     round_counts[w][5] += 1
             ff_winners = region_champions
 
         elif len(region_champions) == 1:
-            # Only one champion — they win by default
             champ = region_champions[0]
             if champ and champ in round_counts:
                 round_counts[champ][5] += 1
                 round_counts[champ][6] += 1
             continue
 
-        # Step 4: Championship
+        # Championship
         if len(ff_winners) >= 2:
             champ = sample_winner(ff_winners[0], ff_winners[1])
             if champ and champ in round_counts:
@@ -588,9 +598,7 @@ def simulate_bracket(
             if champ and champ in round_counts:
                 round_counts[champ][6] += 1
 
-    # ------------------------------------------------------------------
     # Convert counts to probabilities
-    # ------------------------------------------------------------------
     results = []
     for tid, info in team_info.items():
         row = {
