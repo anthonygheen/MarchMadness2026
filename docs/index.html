@@ -55,32 +55,93 @@ header { background: var(--text); border-bottom: 4px solid var(--accent); }
 /* ════════════════════════════════════
    BRACKET
 ════════════════════════════════════ */
-#bracket-panel { overflow-x: auto; padding: 16px 12px 32px; }
+#bracket-panel {
+  padding: 14px 12px 32px;
+  /* overflow hidden on panel — scaler handles scroll */
+  overflow: hidden;
+}
 
-.bracket-half { margin-bottom: 12px; }
+/* Zoom bar */
+.bracket-zoom-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  margin-bottom: 14px;
+  width: fit-content;
+}
+.zoom-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.zoom-slider {
+  -webkit-appearance: none;
+  width: 180px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border2);
+  outline: none;
+  cursor: pointer;
+}
+.zoom-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
+.zoom-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: none;
+}
+.zoom-val {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text);
+  min-width: 38px;
+}
+
+/* Scaler wrapper — transform-origin top left so it scales from top */
+#bracket-scaler {
+  transform-origin: top left;
+  transition: transform 0.08s ease;
+  /* width will be overridden to natural content width */
+}
+
+/* Bracket content */
+.bracket-half { margin-bottom: 10px; }
 .half-label { font-family: 'Barlow Condensed', sans-serif; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); padding: 0 4px 6px; }
 
-/* Round header row */
-.round-header-row { display: flex; min-width: 1180px; margin-bottom: 4px; gap: 0; }
-.rh { font-family: 'Barlow Condensed', sans-serif; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); border-bottom: 2px solid var(--border2); padding-bottom: 4px; text-align: center; }
+.round-header-row { display: flex; margin-bottom: 4px; align-items: flex-end; }
+.rh { font-family: 'Barlow Condensed', sans-serif; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); border-bottom: 2px solid var(--border2); padding-bottom: 4px; text-align: center; flex-shrink: 0; }
 .rh-accent { color: var(--accent); border-bottom-color: var(--accent); }
 .rh-spacer { flex: 1; }
 
-/* Main bracket row */
-.bracket-row { display: flex; align-items: flex-start; min-width: 1180px; gap: 12px; }
+.bracket-row { display: flex; align-items: flex-start; gap: 12px; }
 
-/* Region wrapper */
 .region-wrap { display: flex; flex-direction: column; }
 .region-pill { font-family: 'Barlow Condensed', sans-serif; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: white; padding: 2px 8px; border-radius: 3px; margin-bottom: 5px; align-self: flex-start; }
-.region-left-pill { background: var(--blue); }
+.region-left-pill  { background: var(--blue); }
 .region-right-pill { background: var(--accent); align-self: flex-end; }
 
-/* Left region: columns L to R */
-.region-left { display: flex; flex-direction: row; gap: 10px; flex: 1; }
-/* Right region: columns R to L (mirrored) */
+.region-left  { display: flex; flex-direction: row;         gap: 10px; flex: 1; }
 .region-right { display: flex; flex-direction: row-reverse; gap: 10px; flex: 1; }
 
-/* Round column */
 .round-col { display: flex; flex-direction: column; width: var(--card-w); flex-shrink: 0; }
 
 /* ── Team card ── */
@@ -92,16 +153,15 @@ header { background: var(--text); border-bottom: 4px solid var(--accent); }
   border-left: 4px solid var(--border2);
   display: flex;
   align-items: center;
-  gap: 0;
-  position: relative;
   overflow: hidden;
+  position: relative;
   transition: border-color 0.12s, box-shadow 0.12s;
   cursor: default;
   flex-shrink: 0;
 }
 .team-card:hover { border-color: var(--blue); box-shadow: 0 2px 8px rgba(10,79,168,0.18); z-index: 5; }
 .team-card.strong { border-left-color: var(--accent); }
-.team-card.empty { background: #f8f9fa; border-style: dashed; opacity: 0.5; }
+.team-card.empty  { background: #f8f9fa; border-style: dashed; opacity: 0.45; }
 
 .prob-stripe { width: 4px; height: 100%; flex-shrink: 0; }
 .seed-num { width: 22px; height: 100%; display: flex; align-items: center; justify-content: center; font-family: 'Barlow Condensed', sans-serif; font-size: 0.68rem; font-weight: 700; background: #f5f6f8; border-right: 1px solid var(--border); flex-shrink: 0; color: var(--muted); }
@@ -115,8 +175,7 @@ header { background: var(--text); border-bottom: 4px solid var(--accent); }
 .card-prob.warm { color: var(--orange); }
 .card-prob.cool { color: var(--green); }
 
-/* Connector lines between rounds */
-/* Right-side connectors (left region) */
+/* Connector bracket lines */
 .match-group { display: flex; flex-direction: column; position: relative; }
 .match-group::after {
   content: '';
@@ -130,7 +189,6 @@ header { background: var(--text); border-bottom: 4px solid var(--accent); }
   border-bottom: 2px solid var(--conn);
   pointer-events: none;
 }
-/* Mirror for right region */
 .region-right .match-group::after {
   right: auto;
   left: -10px;
@@ -138,15 +196,15 @@ header { background: var(--text); border-bottom: 4px solid var(--accent); }
   border-left: 2px solid var(--conn);
 }
 
-/* ── Final Four center ── */
+/* Final Four center */
 .ff-col { display: flex; flex-direction: column; align-items: center; padding: 0 10px; min-width: 172px; flex-shrink: 0; }
 .ff-title { font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); border-bottom: 2px solid var(--accent); width: 100%; text-align: center; padding-bottom: 4px; margin-bottom: 6px; }
 .champ-card { background: linear-gradient(135deg, #ffde00 0%, #f5c400 100%); border: 2px solid var(--gold); border-radius: 6px; padding: 10px 14px; text-align: center; width: 100%; box-shadow: 0 3px 10px rgba(200,150,12,0.25); margin: 8px 0; }
 .champ-label { font-family: 'Barlow Condensed', sans-serif; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #7a5800; }
-.champ-name { font-family: 'Barlow Condensed', sans-serif; font-size: 1rem; font-weight: 900; color: #1a1200; margin: 3px 0 1px; line-height: 1.1; }
+.champ-name  { font-family: 'Barlow Condensed', sans-serif; font-size: 1rem; font-weight: 900; color: #1a1200; margin: 3px 0 1px; line-height: 1.1; }
 .champ-prob-lbl { font-family: 'Barlow Condensed', sans-serif; font-size: 0.82rem; font-weight: 700; color: #7a5800; }
 
-/* ── First Four ── */
+/* First Four */
 .first-four-section { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 12px 16px; margin-top: 14px; }
 .ff-section-title { font-family: 'Barlow Condensed', sans-serif; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); border-bottom: 2px solid var(--border); padding-bottom: 6px; margin-bottom: 10px; }
 .ff-teams { display: flex; gap: 10px; flex-wrap: wrap; }
@@ -182,7 +240,7 @@ header { background: var(--text); border-bottom: 4px solid var(--accent); }
 .td-seed.s4 { background: #edfbf4; color: var(--green);  border-color: #b3ffce; }
 .td-name { font-weight: 600; }
 .td-region { font-family: 'Barlow Condensed', sans-serif; font-size: 0.76rem; color: var(--muted); font-weight: 600; }
-.prob-cell { font-family: 'Barlow Condensed', sans-serif; font-size: 0.8rem; font-weight: 600; text-align: right; white-space: nowrap; }
+.prob-cell  { font-family: 'Barlow Condensed', sans-serif; font-size: 0.8rem; font-weight: 600; text-align: right; white-space: nowrap; }
 .champ-cell { font-family: 'Barlow Condensed', sans-serif; font-size: 0.92rem; font-weight: 800; text-align: right; }
 .h0 { color: #bbb; }
 .h1 { color: #4caf50; }
@@ -221,7 +279,20 @@ footer strong { color: rgba(255,255,255,0.75); }
 <div id="loading"><div class="spinner"></div>Loading bracket predictions...</div>
 
 <div id="bracket-panel" class="panel" style="display:none">
-  <div id="bracket-content"></div>
+
+  <!-- Zoom control -->
+  <div class="bracket-zoom-bar">
+    <span class="zoom-label">🔍 Zoom</span>
+    <input class="zoom-slider" id="zoom-slider" type="range"
+           min="40" max="100" value="70" oninput="updateZoom(this.value)">
+    <span class="zoom-val" id="zoom-val">70%</span>
+  </div>
+
+  <!-- Scaled bracket wrapper -->
+  <div id="bracket-scaler">
+    <div id="bracket-content"></div>
+  </div>
+
 </div>
 
 <div id="table-panel" class="panel" style="display:none">
@@ -258,27 +329,11 @@ const ROUND_SHORT = {
   'Elite 8_prob':'E8','Final Four_prob':'F4','Champion_prob':'WIN'
 };
 
-// Standard NCAA bracket seed pairings, in bracket order (game 1 through 8)
-// These pairs are FIXED and never change year to year
+// Fixed NCAA bracket seed pairings in bracket order (never changes year to year)
 const R64_PAIRS = [
-  [1,16],[8,9],[5,12],[4,13],   // top half of region
-  [6,11],[3,14],[7,10],[2,15],  // bottom half of region
+  [1,16],[8,9],[5,12],[4,13],   // top half
+  [6,11],[3,14],[7,10],[2,15],  // bottom half
 ];
-// R32: winner of game i faces winner of game i+1 (within each half)
-const R32_MATCHUPS = [
-  { games: [0, 1] }, // 1/16 winner vs 8/9 winner
-  { games: [2, 3] }, // 5/12 winner vs 4/13 winner
-  { games: [4, 5] }, // 6/11 winner vs 3/14 winner
-  { games: [6, 7] }, // 7/10 winner vs 2/15 winner
-];
-// S16: R32 winners pair up
-const S16_MATCHUPS = [
-  { r32: [0, 1] }, // top-half R32 winners
-  { r32: [2, 3] }, // bottom-half R32 winners
-];
-// E8: the two S16 winners play
-// F4: regional champion
-
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function fmtPct(p) {
@@ -343,6 +398,17 @@ function parseCSV(text) {
   });
 }
 
+// ─── Zoom ─────────────────────────────────────────────────────────────────────
+function updateZoom(val) {
+  const scaler = document.getElementById('bracket-scaler');
+  const scale  = val / 100;
+  scaler.style.transform = `scale(${scale})`;
+  // Adjust the panel's effective height so page doesn't leave huge gap
+  const naturalH = scaler.scrollHeight;
+  scaler.parentElement.style.height = (naturalH * scale + 60) + 'px';
+  document.getElementById('zoom-val').textContent = val + '%';
+}
+
 // ─── Tab ─────────────────────────────────────────────────────────────────────
 function switchTab(tab) {
   document.querySelectorAll('.tab-btn').forEach((b, i) =>
@@ -350,12 +416,16 @@ function switchTab(tab) {
   );
   document.getElementById('bracket-panel').style.display = tab === 'bracket' ? 'block' : 'none';
   document.getElementById('table-panel').style.display   = tab === 'table'   ? 'block' : 'none';
+  if (tab === 'bracket') {
+    // Re-apply zoom after panel becomes visible so height calc is correct
+    setTimeout(() => updateZoom(document.getElementById('zoom-slider').value), 50);
+  }
 }
 
-// ─── Team card HTML ───────────────────────────────────────────────────────────
+// ─── Team card ────────────────────────────────────────────────────────────────
 function teamCard(team, field) {
   if (!team) {
-    return `<div class="team-card empty" style="width:var(--card-w);height:var(--card-h);">
+    return `<div class="team-card empty">
       <div class="prob-stripe"></div>
       <div class="seed-num" style="color:#ccc">—</div>
       <div class="card-name" style="color:#ccc">TBD</div>
@@ -367,8 +437,7 @@ function teamCard(team, field) {
   const nm  = (team.team_name || '').length > 16
     ? (team.team_name || '').slice(0, 15) + '…'
     : (team.team_name || '');
-  const strong = p >= 0.14 ? ' strong' : '';
-  return `<div class="team-card${strong}" title="${team.team_name} — ${fmtPct(p)}">
+  return `<div class="team-card${p >= 0.14 ? ' strong' : ''}" title="${team.team_name} — ${fmtPct(p)}">
     <div class="prob-stripe" style="background:${col}"></div>
     <div class="seed-num ${sc}">${team.seed || '?'}</div>
     <div class="card-name">${nm}</div>
@@ -377,20 +446,15 @@ function teamCard(team, field) {
 }
 
 // ─── Bracket region builder ───────────────────────────────────────────────────
-// This follows the ACTUAL bracket path at every round.
-// No more "highest prob in a seed range" — we explicitly track which seeds
-// compete against which based on the fixed NCAA bracket structure.
-
 function buildRegion(teams, side) {
-  // Build seed lookup
   const bySeed = {};
   teams.forEach(t => { bySeed[t.seed] = t; });
 
-  const CARD  = 36;  // px — must match --card-h
-  const GAP   =  2;  // px gap between cards in a matchup
-  const STEP  = CARD + GAP;  // px per team slot
+  const CARD = 36;
+  const GAP  = 2;
+  const STEP = CARD + GAP;
 
-  // Helper: best team from a seed pair by a given field
+  // Best team from a seed pair by probability field
   function bestPair(s1, s2, field) {
     const t1 = bySeed[s1], t2 = bySeed[s2];
     const p1 = t1 ? (t1[field] || 0) : 0;
@@ -398,150 +462,107 @@ function buildRegion(teams, side) {
     return p1 >= p2 ? (t1 || t2) : (t2 || t1);
   }
 
-  // Helper: best team from two seed pairs by a given field
-  // (used for S16 where we pick from the correct R32 matchup winners)
-  function bestQuad(s1, s2, s3, s4, field) {
-    const candidates = [bySeed[s1], bySeed[s2], bySeed[s3], bySeed[s4]].filter(Boolean);
-    return candidates.reduce((best, t) =>
-      (t[field] || 0) > (best[field] || 0) ? t : best
-    , candidates[0] || null);
+  // Best team from a list of seeds by probability field
+  function bestFrom(seeds, field) {
+    const candidates = seeds.map(s => bySeed[s]).filter(Boolean);
+    if (!candidates.length) return null;
+    return candidates.reduce((b, t) =>
+      (t[field] || 0) > (b[field] || 0) ? t : b, candidates[0]);
   }
 
   let html = `<div class="region-${side}">`;
 
-  // ── Round of 64 (8 games) ──────────────────────────────────────────────────
-  // Each matchup is a pair: [seed1, seed2]
-  // Groups of 2 matchups form a "connector group" for the bracket lines
+  // ── R64: 8 matchup pairs grouped into 4 connector groups ─────────────────
   html += `<div class="round-col">`;
-
-  // We group pairs into connector groups: [0,1], [2,3], [4,5], [6,7]
-  // Each connector group shows two matchups connected by a bracket line
-  const connGroups = [[0,1],[2,3],[4,5],[6,7]];
-  connGroups.forEach((group, gi) => {
+  // Groups: [pair0,pair1], [pair2,pair3], [pair4,pair5], [pair6,pair7]
+  [[0,1],[2,3],[4,5],[6,7]].forEach((group, gi) => {
     html += `<div class="match-group">`;
     group.forEach((pairIdx, pi) => {
       const [s1, s2] = R64_PAIRS[pairIdx];
       html += teamCard(bySeed[s1], 'Round of 64_prob');
       html += `<div style="height:${GAP}px"></div>`;
       html += teamCard(bySeed[s2], 'Round of 64_prob');
-      if (pi === 0) html += `<div style="height:${STEP * 2}px"></div>`; // gap between pairs within group
+      // Gap between the two pairs within a connector group
+      if (pi === 0) html += `<div style="height:${STEP * 2}px"></div>`;
     });
     html += `</div>`;
-    if (gi < 3) html += `<div style="height:${STEP * 4}px"></div>`; // gap between connector groups
+    // Gap between connector groups
+    if (gi < 3) html += `<div style="height:${STEP * 4}px"></div>`;
   });
-
   html += `</div>`;
 
-  // ── Round of 32 (4 games) ──────────────────────────────────────────────────
-  // Game 1: winner(1/16) vs winner(8/9)   — seeds from pairs 0 and 1
-  // Game 2: winner(5/12) vs winner(4/13)  — seeds from pairs 2 and 3
-  // Game 3: winner(6/11) vs winner(3/14)  — seeds from pairs 4 and 5
-  // Game 4: winner(7/10) vs winner(2/15)  — seeds from pairs 6 and 7
-  const R32_SEED_GROUPS = [
-    [R64_PAIRS[0], R64_PAIRS[1]],  // game 1
-    [R64_PAIRS[2], R64_PAIRS[3]],  // game 2
-    [R64_PAIRS[4], R64_PAIRS[5]],  // game 3
-    [R64_PAIRS[6], R64_PAIRS[7]],  // game 4
+  // ── R32: 4 games — correct bracket pairings ───────────────────────────────
+  // Game 1: winner(1/16) vs winner(8/9)
+  // Game 2: winner(5/12) vs winner(4/13)
+  // Game 3: winner(6/11) vs winner(3/14)
+  // Game 4: winner(7/10) vs winner(2/15)
+  const R32 = [
+    { top: [1,16], bot: [8,9]  },
+    { top: [5,12], bot: [4,13] },
+    { top: [6,11], bot: [3,14] },
+    { top: [7,10], bot: [2,15] },
   ];
 
   html += `<div class="round-col">`;
-  R32_SEED_GROUPS.forEach(([[sa1,sa2],[sb1,sb2]], i) => {
-    const topTeam = bestPair(sa1, sa2, 'Round of 32_prob');
-    const botTeam = bestPair(sb1, sb2, 'Round of 32_prob');
-    const offset  = STEP * 1.5; // center within the 4-slot space
-    const between = STEP * 4;   // gap between R32 matchups
-    html += `<div style="height:${offset}px"></div>`;
+  R32.forEach(({ top, bot }, i) => {
+    const topTeam = bestPair(top[0], top[1], 'Round of 32_prob');
+    const botTeam = bestPair(bot[0], bot[1], 'Round of 32_prob');
+    // Center each matchup within its 4-slot window
+    const preGap  = Math.round(STEP * 1.5);
+    const midGap  = STEP * 2 + GAP;
+    const postGap = i < 3 ? Math.round(STEP * 2.5) : Math.round(STEP * 1.5);
+    html += `<div style="height:${preGap}px"></div>`;
     html += `<div class="match-group">`;
     html += teamCard(topTeam, 'Round of 32_prob');
-    html += `<div style="height:${GAP + STEP * 2}px"></div>`; // gap between the two R32 opponents
+    html += `<div style="height:${midGap}px"></div>`;
     html += teamCard(botTeam, 'Round of 32_prob');
     html += `</div>`;
-    if (i < 3) html += `<div style="height:${offset + between - STEP * 2}px"></div>`;
-    else        html += `<div style="height:${offset}px"></div>`;
+    html += `<div style="height:${postGap}px"></div>`;
   });
   html += `</div>`;
 
-  // ── Sweet 16 (2 games) ─────────────────────────────────────────────────────
-  // Game 1: winner(R32 game1) vs winner(R32 game2)  → top half of region
-  // Game 2: winner(R32 game3) vs winner(R32 game4)  → bottom half of region
-  const S16_SEED_GROUPS = [
-    [[1,16],[8,9],[5,12],[4,13]],  // top half seeds
-    [[6,11],[3,14],[7,10],[2,15]], // bottom half seeds
+  // ── S16: 2 games — top half vs bottom half ────────────────────────────────
+  // Game 1: R32 game1 winner vs R32 game2 winner  (seeds 1,16,8,9,5,12,4,13)
+  // Game 2: R32 game3 winner vs R32 game4 winner  (seeds 6,11,3,14,7,10,2,15)
+  const S16 = [
+    { topSeeds: [1,16,8,9],   botSeeds: [5,12,4,13]  },
+    { topSeeds: [6,11,3,14],  botSeeds: [7,10,2,15]  },
   ];
 
   html += `<div class="round-col">`;
-  S16_SEED_GROUPS.forEach((seedGroup, i) => {
-    const pairs = seedGroup.map(p => p);
-    // Pick most likely from each R32 bracket half
-    const topTeam = bestPair(...pairs[0].concat(pairs[1]).slice(0,2),  'Sweet 16_prob') ||
-                    bestQuad(...pairs[0], 'Sweet 16_prob');
-    const botTeam = bestPair(...pairs[2].concat(pairs[3]).slice(0,2), 'Sweet 16_prob') ||
-                    bestQuad(...pairs[2], 'Sweet 16_prob');
-
-    // Corrected: pick best from the two R32 matchup pairs
-    const t1 = bestQuad(pairs[0][0], pairs[0][1], pairs[1][0], pairs[1][1], 'Sweet 16_prob');
-    const t2 = bestQuad(pairs[2][0], pairs[2][1], pairs[3][0], pairs[3][1], 'Sweet 16_prob');
-
-    const offset  = STEP * 3.5;
-    const between = STEP * 8;
-    html += `<div style="height:${offset}px"></div>`;
+  S16.forEach(({ topSeeds, botSeeds }, i) => {
+    const topTeam = bestFrom(topSeeds, 'Sweet 16_prob');
+    const botTeam = bestFrom(botSeeds, 'Sweet 16_prob');
+    const preGap  = Math.round(STEP * 3.5);
+    const midGap  = STEP * 6 + GAP;
+    const postGap = i < 1 ? Math.round(STEP * 2.5) : Math.round(STEP * 3.5);
+    html += `<div style="height:${preGap}px"></div>`;
     html += `<div class="match-group">`;
-    html += teamCard(t1, 'Sweet 16_prob');
-    html += `<div style="height:${GAP + STEP * 6}px"></div>`;
-    html += teamCard(t2, 'Sweet 16_prob');
+    html += teamCard(topTeam, 'Sweet 16_prob');
+    html += `<div style="height:${midGap}px"></div>`;
+    html += teamCard(botTeam, 'Sweet 16_prob');
     html += `</div>`;
-    if (i < 1) html += `<div style="height:${offset + between - STEP * 6}px"></div>`;
-    else        html += `<div style="height:${offset}px"></div>`;
+    html += `<div style="height:${postGap}px"></div>`;
   });
   html += `</div>`;
 
-  // ── Elite 8 (1 game) ───────────────────────────────────────────────────────
-  // Top half winner vs bottom half winner
-  const e8Top = bestQuad(
-    R64_PAIRS[0][0], R64_PAIRS[0][1],
-    R64_PAIRS[1][0], R64_PAIRS[1][1],
-    'Elite 8_prob'
-  ) || bestQuad(
-    R64_PAIRS[2][0], R64_PAIRS[2][1],
-    R64_PAIRS[3][0], R64_PAIRS[3][1],
-    'Elite 8_prob'
-  );
-  const e8Bot = bestQuad(
-    R64_PAIRS[4][0], R64_PAIRS[4][1],
-    R64_PAIRS[5][0], R64_PAIRS[5][1],
-    'Elite 8_prob'
-  ) || bestQuad(
-    R64_PAIRS[6][0], R64_PAIRS[6][1],
-    R64_PAIRS[7][0], R64_PAIRS[7][1],
-    'Elite 8_prob'
-  );
+  // ── E8: 1 game — top half winner vs bottom half winner ────────────────────
+  const e8Top = bestFrom([1,16,8,9,5,12,4,13], 'Elite 8_prob');
+  const e8Bot = bestFrom([6,11,3,14,7,10,2,15], 'Elite 8_prob');
+  const e8Pre = Math.round(STEP * 7.5);
+  const e8Mid = STEP * 14 + GAP;
 
-  // Actually pick E8 correctly: top half = games 0-3, bottom half = games 4-7
-  const e8TopTeam = (() => {
-    const candidates = [0,1,2,3].flatMap(i => R64_PAIRS[i])
-      .map(s => bySeed[s]).filter(Boolean);
-    return candidates.reduce((b, t) => (t['Elite 8_prob']||0) > (b['Elite 8_prob']||0) ? t : b,
-      candidates[0] || null);
-  })();
-  const e8BotTeam = (() => {
-    const candidates = [4,5,6,7].flatMap(i => R64_PAIRS[i])
-      .map(s => bySeed[s]).filter(Boolean);
-    return candidates.reduce((b, t) => (t['Elite 8_prob']||0) > (b['Elite 8_prob']||0) ? t : b,
-      candidates[0] || null);
-  })();
-
-  const e8Offset = STEP * 7.5;
   html += `<div class="round-col">`;
-  html += `<div style="height:${e8Offset}px"></div>`;
+  html += `<div style="height:${e8Pre}px"></div>`;
   html += `<div class="match-group">`;
-  html += teamCard(e8TopTeam, 'Elite 8_prob');
-  html += `<div style="height:${GAP + STEP * 14}px"></div>`;
-  html += teamCard(e8BotTeam, 'Elite 8_prob');
+  html += teamCard(e8Top, 'Elite 8_prob');
+  html += `<div style="height:${e8Mid}px"></div>`;
+  html += teamCard(e8Bot, 'Elite 8_prob');
   html += `</div>`;
-  html += `<div style="height:${e8Offset}px"></div>`;
+  html += `<div style="height:${e8Pre}px"></div>`;
   html += `</div>`;
 
-  html += `</div>`; // close region-left/right
+  html += `</div>`;
   return html;
 }
 
@@ -561,33 +582,37 @@ function renderBracket() {
   const champ = [...allTeams].sort((a,b) =>
     (b['Champion_prob']||0) - (a['Champion_prob']||0))[0];
 
-  // F4 representative per region = team with highest F4 prob
   function f4Rep(key) {
-    return (regions[key] || []).reduce((b, t) =>
+    const ts = regions[key] || [];
+    return ts.reduce((b, t) =>
       (t['Final Four_prob']||0) > (b['Final Four_prob']||0) ? t : b,
-    regions[key]?.[0] || null);
+    ts[0] || null);
   }
 
-  const ROUND_LABELS_LEFT  = ['R64','R32','S16','E8'];
-  const ROUND_LABELS_RIGHT = ['E8','S16','R32','R64'];
   const CARD_W = 155;
-  const GAP_W  = 10;
+  const COL_G  = 10;
 
-  function roundHeaderRow(leftKey, rightKey) {
+  function roundHeaderRow() {
+    const leftLabels  = ['R64','R32','S16','E8'];
+    const rightLabels = ['E8','S16','R32','R64'];
     let h = `<div class="round-header-row">`;
-    // Left region headers
-    ROUND_LABELS_LEFT.forEach(l => h += `<div class="rh" style="width:${CARD_W}px;margin-right:${GAP_W}px">${l}</div>`);
-    // Center spacer + F4 label
-    h += `<div style="min-width:172px;text-align:center" class="rh rh-accent">F4 / CHAMP</div>`;
-    // Right region headers
-    ROUND_LABELS_RIGHT.forEach(l => h += `<div class="rh" style="width:${CARD_W}px;margin-left:${GAP_W}px;text-align:center">${l}</div>`);
+    leftLabels.forEach(l =>
+      h += `<div class="rh" style="width:${CARD_W}px;margin-right:${COL_G}px;flex-shrink:0">${l}</div>`
+    );
+    h += `<div style="min-width:172px;flex-shrink:0;text-align:center" class="rh rh-accent">F4 / CHAMP</div>`;
+    rightLabels.forEach(l =>
+      h += `<div class="rh" style="width:${CARD_W}px;margin-left:${COL_G}px;flex-shrink:0;text-align:center">${l}</div>`
+    );
     h += `</div>`;
     return h;
   }
 
-  function buildHalf(leftKey, rightKey, ffLeft, ffRight, showChamp) {
+  function buildHalf(leftKey, rightKey, showChamp) {
+    const ffL = f4Rep(leftKey);
+    const ffR = f4Rep(rightKey);
+
     let h = `<div class="bracket-half">`;
-    h += roundHeaderRow(leftKey, rightKey);
+    h += roundHeaderRow();
     h += `<div class="bracket-row">`;
 
     // Left region
@@ -596,10 +621,10 @@ function renderBracket() {
     h += buildRegion(regions[leftKey] || [], 'left');
     h += `</div>`;
 
-    // Center F4 column
+    // Center F4 + optional champion
     h += `<div class="ff-col">`;
     h += `<div class="ff-title">Final Four</div>`;
-    if (ffLeft) h += `<div style="margin:4px 0">${teamCard(ffLeft, 'Final Four_prob')}</div>`;
+    if (ffL) h += `<div style="margin:4px 0">${teamCard(ffL, 'Final Four_prob')}</div>`;
     if (showChamp && champ) {
       h += `<div class="champ-card">
         <div class="champ-label">🏆 Projected Champion</div>
@@ -607,7 +632,7 @@ function renderBracket() {
         <div class="champ-prob-lbl">${fmtPct(champ['Champion_prob'])}</div>
       </div>`;
     }
-    if (ffRight) h += `<div style="margin:4px 0">${teamCard(ffRight, 'Final Four_prob')}</div>`;
+    if (ffR) h += `<div style="margin:4px 0">${teamCard(ffR, 'Final Four_prob')}</div>`;
     h += `</div>`;
 
     // Right region
@@ -621,10 +646,10 @@ function renderBracket() {
   }
 
   let html = '';
-  if (top.length >= 2)    html += buildHalf(top[0],    top[1],    f4Rep(top[0]),    f4Rep(top[1]),    true);
-  if (bottom.length >= 2) html += buildHalf(bottom[0], bottom[1], f4Rep(bottom[0]), f4Rep(bottom[1]), false);
+  if (top.length >= 2)    html += buildHalf(top[0],    top[1],    true);
+  if (bottom.length >= 2) html += buildHalf(bottom[0], bottom[1], false);
 
-  // First Four
+  // First Four section
   const firstFour = allTeams.filter(t => t.region === 'First Four');
   if (firstFour.length > 0) {
     html += `<div class="first-four-section">`;
@@ -696,7 +721,7 @@ function renderTable() {
 
 function buildFilters() {
   const regions = [...new Set(allTeams.map(t => t.region))].sort();
-  const seeds   = [...new Set(allTeams.map(t => t.seed).filter(Boolean))].sort((a,b)=>a-b);
+  const seeds   = [...new Set(allTeams.map(t => t.seed).filter(Boolean))].sort((a,b) => a-b);
   const rSel = document.getElementById('region-filter');
   regions.forEach(r => rSel.innerHTML += `<option value="${r}">${r}</option>`);
   const sSel = document.getElementById('seed-filter');
@@ -718,7 +743,8 @@ async function init() {
     const text = await resp.text();
     allTeams = parseCSV(text);
 
-    const topChamp = [...allTeams].sort((a,b)=>(b['Champion_prob']||0)-(a['Champion_prob']||0))[0];
+    const topChamp = [...allTeams].sort((a,b) =>
+      (b['Champion_prob']||0) - (a['Champion_prob']||0))[0];
     const r64 = allTeams.filter(t => t.region !== 'First Four');
     document.getElementById('s-teams').textContent = r64.length;
     document.getElementById('s-fav').textContent   = topChamp?.team_name?.split(' ').slice(-1)[0] || '—';
@@ -730,6 +756,9 @@ async function init() {
     renderBracket();
     renderTable();
     document.getElementById('bracket-panel').style.display = 'block';
+
+    // Apply initial zoom after content renders
+    setTimeout(() => updateZoom(document.getElementById('zoom-slider').value), 100);
 
   } catch(err) {
     document.getElementById('loading').innerHTML =
