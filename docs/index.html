@@ -4,451 +4,626 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>March Madness 2026 — Model Predictions</title>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg:        #0a0c10;
-    --surface:   #111318;
-    --border:    #1e2230;
-    --accent:    #e8ff47;
-    --accent2:   #47c8ff;
-    --text:      #e8eaf0;
-    --muted:     #555d70;
-    --hot:       #ff4757;
-    --warm:      #ffa502;
-    --cool:      #2ed573;
-    --r1:   #1a1f2e;
-    --r2:   #141926;
-    --r3:   #10141f;
-    --r4:   #0d1019;
-  }
+:root {
+  --bg:         #f0f2f5;
+  --surface:    #ffffff;
+  --border:     #dde1e7;
+  --border2:    #c8cdd5;
+  --text:       #1a1d23;
+  --muted:      #6b7280;
+  --accent:     #cc0000;
+  --accent2:    #e63535;
+  --blue:       #0a4fa8;
+  --green:      #0d7c3d;
+  --orange:     #e07b00;
+  --gold:       #c8960c;
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  /* probability heat colors */
+  --p0:  #f8f9fa;
+  --p10: #e8f5e9;
+  --p20: #c8e6c9;
+  --p30: #a5d6a7;
+  --p40: #66bb6a;
+  --p50: #43a047;
+  --p60: #2e7d32;
+  --p70: #1b5e20;
 
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'DM Sans', sans-serif;
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
+  --connector-color: #c8cdd5;
+  --card-h: 36px;
+  --card-w: 152px;
+  --round-gap: 28px;
+}
 
-  /* ── Header ── */
-  header {
-    padding: 2rem 2.5rem 1.5rem;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: flex-end;
-    gap: 2rem;
-    background: linear-gradient(180deg, #0d1020 0%, var(--bg) 100%);
-  }
-  header h1 {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: clamp(2.2rem, 5vw, 3.8rem);
-    letter-spacing: 0.04em;
-    line-height: 1;
-    color: var(--accent);
-  }
-  header h1 span { color: var(--text); }
-  .header-meta {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.72rem;
-    color: var(--muted);
-    line-height: 1.8;
-    padding-bottom: 0.25rem;
-  }
-  .header-meta strong { color: var(--accent2); }
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
-  /* ── Tabs ── */
-  .tabs {
-    display: flex;
-    gap: 0;
-    padding: 0 2.5rem;
-    border-bottom: 1px solid var(--border);
-    background: var(--surface);
-  }
-  .tab-btn {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.78rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    padding: 0.9rem 1.8rem;
-    background: none;
-    border: none;
-    color: var(--muted);
-    cursor: pointer;
-    border-bottom: 2px solid transparent;
-    transition: all 0.2s;
-  }
-  .tab-btn:hover { color: var(--text); }
-  .tab-btn.active {
-    color: var(--accent);
-    border-bottom-color: var(--accent);
-  }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Barlow', sans-serif;
+  min-height: 100vh;
+}
 
-  /* ── Tab panels ── */
-  .panel { display: none; padding: 2rem 2.5rem; }
-  .panel.active { display: block; }
+/* ── Header ── */
+header {
+  background: var(--text);
+  color: white;
+  padding: 0;
+  border-bottom: 4px solid var(--accent);
+}
+.header-inner {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+}
+.header-logo {
+  background: var(--accent);
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.header-logo .bracket-icon {
+  font-size: 1.8rem;
+  line-height: 1;
+}
+.header-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+.header-title span { color: #ffde00; }
+.header-meta {
+  padding: 10px 24px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  font-size: 0.78rem;
+  color: rgba(255,255,255,0.7);
+}
+.header-meta strong { color: white; }
+.header-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.header-stat .val {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #ffde00;
+  letter-spacing: 0.03em;
+}
 
-  /* ── Loading state ── */
-  #loading {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 4rem 2.5rem;
-    font-family: 'DM Mono', monospace;
-    font-size: 0.8rem;
-    color: var(--muted);
-  }
-  .spinner {
-    width: 18px; height: 18px;
-    border: 2px solid var(--border);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
+/* ── Tabs ── */
+.tabs {
+  background: #1a1d23;
+  display: flex;
+  gap: 0;
+  padding: 0 16px;
+}
+.tab-btn {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 10px 20px;
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.5);
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all 0.15s;
+}
+.tab-btn:hover { color: rgba(255,255,255,0.85); }
+.tab-btn.active {
+  color: #ffde00;
+  border-bottom-color: #ffde00;
+}
 
-  /* ── Probability color helpers ── */
-  .prob-bar {
-    display: inline-block;
-    height: 3px;
-    border-radius: 2px;
-    background: var(--accent);
-    opacity: 0.7;
-    vertical-align: middle;
-    margin-left: 6px;
-  }
+/* ── Loading ── */
+#loading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 60px 24px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1rem;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.spinner {
+  width: 20px; height: 20px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 
-  /* ═══════════════════════════════════════
-     BRACKET TAB
-  ═══════════════════════════════════════ */
-  #bracket-panel {
-    overflow-x: auto;
-    padding: 1.5rem 2.5rem;
-  }
+/* ── Panels ── */
+.panel { display: none; }
+.panel.active { display: block; }
 
-  .bracket-wrapper {
-    display: flex;
-    gap: 0;
-    min-width: 1100px;
-    align-items: stretch;
-  }
+/* ════════════════════════════════════════
+   BRACKET PANEL
+════════════════════════════════════════ */
+#bracket-panel {
+  overflow-x: auto;
+  padding: 20px 16px 32px;
+}
 
-  .bracket-region {
-    margin-bottom: 2.5rem;
-  }
+.bracket-half {
+  margin-bottom: 8px;
+}
 
-  .region-label {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 1.1rem;
-    letter-spacing: 0.1em;
-    color: var(--accent2);
-    margin-bottom: 1rem;
-    padding-left: 0.5rem;
-    border-left: 3px solid var(--accent2);
-  }
+.half-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 4px 8px 8px;
+}
 
-  /* Round columns */
-  .rounds-container {
-    display: flex;
-    gap: 12px;
-    align-items: flex-start;
-  }
+/* The bracket row: Left region | Center rounds | Right region */
+.bracket-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  min-width: 1200px;
+}
 
-  .round-col {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    min-width: 170px;
-  }
+/* Round column headers */
+.round-headers {
+  display: flex;
+  gap: 0;
+  margin-bottom: 6px;
+  min-width: 1200px;
+}
+.rh-spacer { flex: 1; }
+.rh-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-align: center;
+  width: var(--card-w);
+  padding: 4px 0;
+  border-bottom: 2px solid var(--border2);
+}
+.rh-center {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  text-align: center;
+  width: var(--card-w);
+  padding: 4px 0;
+  border-bottom: 2px solid var(--accent);
+}
 
-  .round-header {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.65rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--muted);
-    text-align: center;
-    padding-bottom: 6px;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 4px;
-  }
+/* Left region — rounds go left to right */
+.region-left {
+  display: flex;
+  flex-direction: row;
+  gap: var(--round-gap);
+  flex: 1;
+}
 
-  .team-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 7px 10px;
-    cursor: default;
-    transition: border-color 0.15s, transform 0.15s;
-    position: relative;
-  }
-  .team-card:hover {
-    border-color: var(--accent);
-    transform: translateX(2px);
-    z-index: 10;
-  }
-  .team-card.highlight {
-    border-color: var(--accent);
-    background: #141a0a;
-  }
+/* Right region — rounds go right to left (mirror) */
+.region-right {
+  display: flex;
+  flex-direction: row-reverse;
+  gap: var(--round-gap);
+  flex: 1;
+}
 
-  .card-top {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-bottom: 4px;
-  }
-  .seed-badge {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.65rem;
-    font-weight: 500;
-    color: var(--bg);
-    background: var(--muted);
-    border-radius: 3px;
-    padding: 1px 5px;
-    min-width: 22px;
-    text-align: center;
-    flex-shrink: 0;
-  }
-  .seed-badge.top4 { background: var(--accent); color: var(--bg); }
-  .seed-badge.mid  { background: var(--accent2); color: var(--bg); }
+/* Final Four center column */
+.ff-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  min-width: 180px;
+}
+.ff-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  text-align: center;
+  border-bottom: 2px solid var(--accent);
+  width: 100%;
+  padding-bottom: 4px;
+  margin-bottom: 4px;
+}
+.ff-champion {
+  background: linear-gradient(135deg, #ffde00 0%, #f5c200 100%);
+  border: 2px solid #c8960c;
+  border-radius: 6px;
+  padding: 10px 14px;
+  text-align: center;
+  min-width: 160px;
+  box-shadow: 0 2px 8px rgba(200,150,12,0.3);
+}
+.ff-champion .champ-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #7a5800;
+  margin-bottom: 4px;
+}
+.ff-champion .champ-name {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #1a1200;
+  line-height: 1.1;
+}
+.ff-champion .champ-prob {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #7a5800;
+  margin-top: 2px;
+}
 
-  .team-name {
-    font-size: 0.78rem;
-    font-weight: 500;
-    line-height: 1.2;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 120px;
-  }
+/* Round column */
+.round-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  position: relative;
+}
 
-  .card-probs {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  .prob-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    font-family: 'DM Mono', monospace;
-    font-size: 0.62rem;
-    color: var(--muted);
-  }
-  .prob-val {
-    font-weight: 500;
-  }
-  .prob-val.high  { color: var(--accent); }
-  .prob-val.med   { color: var(--warm); }
-  .prob-val.low   { color: var(--cool); }
-  .prob-val.zero  { color: var(--muted); }
+/* Team card */
+.team-card {
+  width: var(--card-w);
+  height: var(--card-h);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border2);
+  display: flex;
+  align-items: center;
+  gap: 0;
+  cursor: default;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  position: relative;
+  overflow: hidden;
+}
+.team-card:hover {
+  border-color: var(--blue);
+  box-shadow: 0 2px 8px rgba(10,79,168,0.15);
+  z-index: 10;
+}
+.team-card.eliminated {
+  opacity: 0.45;
+}
+.team-card.top-contender {
+  border-left-color: var(--accent);
+}
 
-  .champ-badge {
-    position: absolute;
-    top: -8px; right: 8px;
-    font-family: 'DM Mono', monospace;
-    font-size: 0.6rem;
-    background: var(--accent);
-    color: var(--bg);
-    padding: 1px 6px;
-    border-radius: 3px;
-    font-weight: 500;
-  }
+/* Probability color bar on left edge */
+.prob-bar {
+  width: 4px;
+  height: 100%;
+  flex-shrink: 0;
+  background: var(--p0);
+}
 
-  /* full-width bracket layout */
-  .full-bracket {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr 1fr;
-    gap: 1.5rem;
-  }
+.seed-box {
+  width: 22px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--muted);
+  background: #f8f9fa;
+  border-right: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.seed-box.s1  { color: var(--accent); background: #fff0f0; }
+.seed-box.s2  { color: var(--blue);   background: #f0f4ff; }
+.seed-box.s3  { color: #6b3fa0;       background: #f5f0ff; }
+.seed-box.s4  { color: var(--green);  background: #f0fff4; }
 
-  /* ═══════════════════════════════════════
-     TABLE TAB
-  ═══════════════════════════════════════ */
-  .table-controls {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-    flex-wrap: wrap;
-    align-items: center;
-  }
+.team-name-card {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  line-height: 1;
+}
 
-  .search-box {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.8rem;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    width: 220px;
-    outline: none;
-    transition: border-color 0.2s;
-  }
-  .search-box:focus { border-color: var(--accent); }
-  .search-box::placeholder { color: var(--muted); }
+.prob-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--muted);
+  padding-right: 5px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.prob-label.hot  { color: var(--accent); }
+.prob-label.warm { color: var(--orange); }
+.prob-label.cool { color: var(--green); }
 
-  .filter-select {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.75rem;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 0.5rem 0.8rem;
-    border-radius: 4px;
-    outline: none;
-    cursor: pointer;
-  }
+/* Spacer between card pairs in a round */
+.card-spacer { height: 0; }
 
-  .sort-hint {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.7rem;
-    color: var(--muted);
-    margin-left: auto;
-  }
+/* Connector lines between rounds */
+.round-col-wrap {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+}
 
-  .data-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.82rem;
-  }
+/* Region label pill */
+.region-pill {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: white;
+  background: var(--blue);
+  padding: 2px 8px;
+  border-radius: 3px;
+  align-self: flex-start;
+  margin-bottom: 6px;
+}
 
-  .data-table thead th {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.68rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--muted);
-    text-align: left;
-    padding: 0.7rem 1rem;
-    border-bottom: 1px solid var(--border);
-    cursor: pointer;
-    white-space: nowrap;
-    user-select: none;
-  }
-  .data-table thead th:hover { color: var(--text); }
-  .data-table thead th.sorted { color: var(--accent); }
-  .data-table thead th .sort-arrow { margin-left: 4px; opacity: 0.5; }
-  .data-table thead th.sorted .sort-arrow { opacity: 1; }
+.region-wrap {
+  display: flex;
+  flex-direction: column;
+}
 
-  .data-table tbody tr {
-    border-bottom: 1px solid var(--border);
-    transition: background 0.1s;
-  }
-  .data-table tbody tr:hover { background: var(--surface); }
+/* Bracket connector SVG overlay approach — use CSS borders instead */
+.matchup-group {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+.matchup-group::after {
+  content: '';
+  position: absolute;
+  right: -14px;
+  top: calc(var(--card-h) / 2);
+  width: 14px;
+  height: calc(100% - var(--card-h));
+  border-top: 2px solid var(--connector-color);
+  border-right: 2px solid var(--connector-color);
+  border-bottom: 2px solid var(--connector-color);
+  pointer-events: none;
+}
+.region-right .matchup-group::after {
+  right: auto;
+  left: -14px;
+  border-right: none;
+  border-left: 2px solid var(--connector-color);
+}
 
-  .data-table td {
-    padding: 0.65rem 1rem;
-    vertical-align: middle;
-  }
+.matchup-gap { height: 2px; background: transparent; }
 
-  .td-team {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
+/* ════════════════════════════════════════
+   TABLE PANEL
+════════════════════════════════════════ */
+#table-panel { padding: 20px 16px 40px; }
 
-  .td-seed {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.7rem;
-    font-weight: 500;
-    color: var(--bg);
-    background: var(--muted);
-    border-radius: 3px;
-    padding: 1px 6px;
-    min-width: 26px;
-    text-align: center;
-    flex-shrink: 0;
-  }
-  .td-seed.top4 { background: var(--accent); }
-  .td-seed.mid  { background: var(--accent2); }
+.table-controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+  background: var(--surface);
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
 
-  .td-name { font-weight: 500; }
+.search-box {
+  font-family: 'Barlow', sans-serif;
+  font-size: 0.85rem;
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  padding: 6px 12px;
+  border-radius: 3px;
+  width: 200px;
+  outline: none;
+}
+.search-box:focus { border-color: var(--blue); }
 
-  .td-region {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.72rem;
-    color: var(--muted);
-  }
+.filter-select {
+  font-family: 'Barlow', sans-serif;
+  font-size: 0.82rem;
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  padding: 6px 10px;
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+}
 
-  .prob-cell {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.78rem;
-    text-align: right;
-    white-space: nowrap;
-  }
-  .prob-cell .pct { font-weight: 500; }
-  .prob-cell .bar {
-    display: inline-block;
-    height: 2px;
-    background: currentColor;
-    border-radius: 1px;
-    margin-left: 4px;
-    vertical-align: middle;
-    opacity: 0.5;
-  }
+.sort-hint {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-left: auto;
+}
 
-  .champ-cell {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.85rem;
-    font-weight: 500;
-    text-align: right;
-  }
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  font-size: 0.85rem;
+}
+.data-table thead {
+  background: var(--text);
+  color: white;
+}
+.data-table thead th {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 10px 12px;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+  border-right: 1px solid rgba(255,255,255,0.1);
+}
+.data-table thead th:hover { background: #2d3140; }
+.data-table thead th.sorted { background: var(--accent); }
+.data-table tbody tr {
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s;
+}
+.data-table tbody tr:hover { background: #f5f7fa; }
+.data-table tbody tr:last-child { border-bottom: none; }
+.data-table td {
+  padding: 8px 12px;
+  vertical-align: middle;
+}
 
-  /* heatmap coloring */
-  .h-0  { color: var(--muted); }
-  .h-1  { color: #3d8b6e; }
-  .h-2  { color: #47a882; }
-  .h-3  { color: #52c496; }
-  .h-4  { color: var(--cool); }
-  .h-5  { color: var(--warm); }
-  .h-6  { color: #ff8c00; }
-  .h-7  { color: var(--hot); }
-  .h-8  { color: var(--accent); }
+.td-team { display: flex; align-items: center; gap: 8px; }
+.td-seed-box {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  padding: 1px 5px;
+  min-width: 24px;
+  text-align: center;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.td-seed-box.s1 { background: #fff0f0; color: var(--accent); border-color: #ffb3b3; }
+.td-seed-box.s2 { background: #f0f4ff; color: var(--blue);   border-color: #b3c6ff; }
+.td-seed-box.s3 { background: #f5f0ff; color: #6b3fa0;       border-color: #d4b3ff; }
+.td-seed-box.s4 { background: #f0fff4; color: var(--green);  border-color: #b3ffce; }
 
-  /* ── Footer ── */
-  footer {
-    margin-top: 4rem;
-    padding: 1.5rem 2.5rem;
-    border-top: 1px solid var(--border);
-    font-family: 'DM Mono', monospace;
-    font-size: 0.7rem;
-    color: var(--muted);
-    display: flex;
-    gap: 2rem;
-  }
+.td-name { font-weight: 600; }
+.td-region {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.prob-cell {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-align: right;
+  white-space: nowrap;
+}
+.champ-cell {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 800;
+  text-align: right;
+}
+
+/* heatmap text colors for table */
+.h0  { color: #ccc; }
+.h1  { color: #4caf50; }
+.h2  { color: #2e7d32; }
+.h3  { color: #e07b00; }
+.h4  { color: #cc0000; }
+.h5  { color: #990000; font-size: 1.05rem; }
+
+/* ── Footer ── */
+footer {
+  background: var(--text);
+  color: rgba(255,255,255,0.5);
+  padding: 12px 20px;
+  font-size: 0.72rem;
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+footer strong { color: rgba(255,255,255,0.8); }
 </style>
 </head>
 <body>
 
 <header>
-  <div>
-    <h1>MARCH MADNESS <span>2026</span></h1>
-    <div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:0.15em;color:var(--muted);margin-top:2px;">MODEL PREDICTIONS</div>
-  </div>
-  <div class="header-meta" id="header-stats">
-    <div>Loading predictions...</div>
+  <div class="header-inner">
+    <div class="header-logo">
+      <div class="bracket-icon">🏀</div>
+      <div class="header-title">March Madness <span>2026</span></div>
+    </div>
+    <div class="header-meta" id="header-stats">
+      <div class="header-stat">
+        <span class="val" id="stat-teams">—</span>
+        <span>Teams in field</span>
+      </div>
+      <div class="header-stat">
+        <span class="val" id="stat-favorite">—</span>
+        <span>Projected favorite</span>
+      </div>
+      <div class="header-stat">
+        <span class="val" id="stat-fav-prob">—</span>
+        <span>Championship probability</span>
+      </div>
+      <div class="header-stat">
+        <span class="val">10,000</span>
+        <span>Monte Carlo simulations</span>
+      </div>
+    </div>
   </div>
 </header>
 
 <div class="tabs">
-  <button class="tab-btn active" onclick="switchTab('bracket')">Bracket View</button>
-  <button class="tab-btn" onclick="switchTab('table')">Probability Table</button>
+  <button class="tab-btn active" onclick="switchTab('bracket')">🏆 Bracket</button>
+  <button class="tab-btn" onclick="switchTab('table')">📊 Probability Table</button>
 </div>
 
 <div id="loading">
   <div class="spinner"></div>
-  Loading bracket_predictions.csv ...
+  Loading bracket predictions...
 </div>
 
-<div id="bracket-panel" class="panel" style="display:none;">
+<div id="bracket-panel" class="panel" style="display:none">
   <div id="bracket-content"></div>
 </div>
 
-<div id="table-panel" class="panel" style="display:none;">
+<div id="table-panel" class="panel" style="display:none">
   <div class="table-controls">
     <input class="search-box" id="search" placeholder="Search team..." oninput="renderTable()">
     <select class="filter-select" id="region-filter" onchange="renderTable()">
@@ -460,50 +635,79 @@
     <span class="sort-hint">Click column headers to sort</span>
   </div>
   <table class="data-table">
-    <thead>
-      <tr id="table-headers"></tr>
-    </thead>
+    <thead><tr id="table-headers"></tr></thead>
     <tbody id="table-body"></tbody>
   </table>
 </div>
 
 <footer>
-  <span>Monte Carlo simulation — 50,000 iterations</span>
-  <span>Gradient Boosting model trained on 2015–2025 seasons</span>
-  <span>Neutral court adjustment applied</span>
+  <span><strong>Model:</strong> Gradient Boosting — trained on 2018–2025 NCAAB seasons</span>
+  <span><strong>Features:</strong> FG%, 3P%, win%, conference strength, AP ranking, playoff seed</span>
+  <span><strong>Method:</strong> Monte Carlo bracket simulation — neutral court adjustment applied</span>
 </footer>
 
 <script>
 // ─── State ───────────────────────────────────────────────────────────────────
-let allTeams = [];
-let sortCol  = 'Champion_prob';
-let sortDir  = -1;  // -1 = descending
-let activeTab = 'bracket';
+let allTeams   = [];
+let sortCol    = 'Champion_prob';
+let sortDir    = -1;
 
 const ROUND_COLS = [
-  'Round of 64_prob',
-  'Round of 32_prob',
-  'Sweet 16_prob',
-  'Elite 8_prob',
-  'Final Four_prob',
-  'Champion_prob',
+  'Round of 64_prob','Round of 32_prob','Sweet 16_prob',
+  'Elite 8_prob','Final Four_prob','Champion_prob'
 ];
-
 const ROUND_SHORT = {
-  'Round of 64_prob':  'R64',
-  'Round of 32_prob':  'R32',
-  'Sweet 16_prob':     'S16',
-  'Elite 8_prob':      'E8',
-  'Final Four_prob':   'F4',
-  'Champion_prob':     'WIN',
+  'Round of 64_prob':'R64','Round of 32_prob':'R32','Sweet 16_prob':'S16',
+  'Elite 8_prob':'E8','Final Four_prob':'F4','Champion_prob':'WIN'
 };
 
-// ─── CSV Parser ───────────────────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+function fmtPct(p) {
+  if (!p || p === 0) return '—';
+  if (p < 0.001) return '<0.1%';
+  return (p * 100).toFixed(1) + '%';
+}
+
+function probColor(p) {
+  if (p >= 0.50) return '#1b5e20';
+  if (p >= 0.35) return '#2e7d32';
+  if (p >= 0.25) return '#388e3c';
+  if (p >= 0.15) return '#43a047';
+  if (p >= 0.08) return '#66bb6a';
+  if (p >= 0.04) return '#a5d6a7';
+  if (p >= 0.01) return '#c8e6c9';
+  if (p >  0)    return '#e8f5e9';
+  return 'transparent';
+}
+
+function probLabelClass(p) {
+  if (p >= 0.20) return 'hot';
+  if (p >= 0.08) return 'warm';
+  if (p >= 0.01) return 'cool';
+  return '';
+}
+
+function heatClass(p) {
+  if (p >= 0.20) return 'h5';
+  if (p >= 0.12) return 'h4';
+  if (p >= 0.06) return 'h3';
+  if (p >= 0.02) return 'h2';
+  if (p >  0)    return 'h1';
+  return 'h0';
+}
+
+function seedClass(s) {
+  if (s === 1) return 's1';
+  if (s === 2) return 's2';
+  if (s === 3) return 's3';
+  if (s === 4) return 's4';
+  return '';
+}
+
 function parseCSV(text) {
   const lines = text.trim().split('\n');
   const headers = lines[0].split(',').map(h => h.trim());
   return lines.slice(1).map(line => {
-    // Handle commas inside quoted fields
     const vals = [];
     let cur = '', inQ = false;
     for (let c of line) {
@@ -521,124 +725,262 @@ function parseCSV(text) {
   });
 }
 
-// ─── Color helpers ────────────────────────────────────────────────────────────
-function probClass(p) {
-  if (p >= 0.25) return 'h-8';
-  if (p >= 0.18) return 'h-7';
-  if (p >= 0.12) return 'h-6';
-  if (p >= 0.08) return 'h-5';
-  if (p >= 0.05) return 'h-4';
-  if (p >= 0.02) return 'h-3';
-  if (p >= 0.01) return 'h-2';
-  if (p >  0)    return 'h-1';
-  return 'h-0';
-}
-
-function cardProbClass(p) {
-  if (p >= 0.20) return 'high';
-  if (p >= 0.08) return 'med';
-  if (p >= 0.01) return 'low';
-  return 'zero';
-}
-
-function fmtPct(p) {
-  if (p === 0 || p == null) return '—';
-  if (p < 0.001) return '<0.1%';
-  return (p * 100).toFixed(1) + '%';
-}
-
-function seedBadgeClass(seed) {
-  if (seed <= 4)  return 'top4';
-  if (seed <= 8)  return 'mid';
-  return '';
-}
-
 // ─── Tab switching ────────────────────────────────────────────────────────────
 function switchTab(tab) {
-  activeTab = tab;
-  document.querySelectorAll('.tab-btn').forEach((b, i) => {
-    b.classList.toggle('active', ['bracket','table'][i] === tab);
-  });
+  document.querySelectorAll('.tab-btn').forEach((b, i) =>
+    b.classList.toggle('active', ['bracket','table'][i] === tab)
+  );
   document.getElementById('bracket-panel').style.display = tab === 'bracket' ? 'block' : 'none';
   document.getElementById('table-panel').style.display   = tab === 'table'   ? 'block' : 'none';
 }
 
-// ─── Bracket render ───────────────────────────────────────────────────────────
-function renderBracket() {
-  const container = document.getElementById('bracket-content');
-
-  // Group teams by region
+// ─── Bracket rendering ────────────────────────────────────────────────────────
+function getTeamsByRegion() {
   const regions = {};
   allTeams.forEach(t => {
     const r = t.region || 'Unknown';
     if (!regions[r]) regions[r] = [];
     regions[r].push(t);
   });
-
-  // Find overall top champion prob for highlighting
-  const maxChamp = Math.max(...allTeams.map(t => t['Champion_prob'] || 0));
-
-  let html = '<div class="full-bracket">';
-
-  Object.entries(regions).sort(([a],[b]) => a.localeCompare(b)).forEach(([region, teams]) => {
-    const sorted = [...teams].sort((a,b) => (a.seed||99) - (b.seed||99));
-
-    html += `<div class="bracket-region">`;
-    html += `<div class="region-label">${region}</div>`;
-    html += `<div style="display:flex;flex-direction:column;gap:6px;">`;
-
-    sorted.forEach(t => {
-      const champ = t['Champion_prob'] || 0;
-      const ff    = t['Final Four_prob'] || 0;
-      const e8    = t['Elite 8_prob'] || 0;
-      const s16   = t['Sweet 16_prob'] || 0;
-      const r32   = t['Round of 32_prob'] || 0;
-      const r64   = t['Round of 64_prob'] || 0;
-
-      const isTop = champ >= maxChamp * 0.5;
-      const seedClass = seedBadgeClass(t.seed);
-
-      html += `<div class="team-card${isTop ? ' highlight' : ''}">`;
-      if (champ > 0.05) {
-        html += `<div class="champ-badge">${fmtPct(champ)} WIN</div>`;
-      }
-      html += `<div class="card-top">
-        <span class="seed-badge ${seedClass}">${t.seed}</span>
-        <span class="team-name" title="${t.team_name}">${t.team_name}</span>
-      </div>`;
-      html += `<div class="card-probs">`;
-
-      const rows = [
-        ['R64', r64], ['R32', r32], ['S16', s16],
-        ['E8',  e8],  ['F4',  ff],  ['WIN', champ],
-      ];
-      rows.forEach(([label, prob]) => {
-        const cls = cardProbClass(prob);
-        const barW = Math.round(prob * 80);
-        html += `<div class="prob-row">
-          <span>${label}</span>
-          <span class="prob-val ${cls}">
-            ${fmtPct(prob)}
-            ${prob > 0 ? `<span style="display:inline-block;width:${barW}px;height:2px;background:currentColor;border-radius:1px;margin-left:4px;vertical-align:middle;opacity:0.5;"></span>` : ''}
-          </span>
-        </div>`;
-      });
-
-      html += `</div></div>`;
-    });
-
-    html += `</div></div>`;
+  // Sort teams within each region by seed
+  Object.keys(regions).forEach(r => {
+    regions[r].sort((a, b) => (a.seed || 99) - (b.seed || 99));
   });
-
-  html += '</div>';
-  container.innerHTML = html;
+  return regions;
 }
 
-// ─── Table render ─────────────────────────────────────────────────────────────
+function teamCard(team, probField) {
+  if (!team) {
+    return `<div class="team-card" style="background:#f8f9fa;">
+      <div class="prob-bar"></div>
+      <div class="seed-box" style="color:#ccc">—</div>
+      <div class="team-name-card" style="color:#ccc">TBD</div>
+    </div>`;
+  }
+  const p     = team[probField] || 0;
+  const color = probColor(p);
+  const sc    = seedClass(team.seed);
+  const name  = (team.team_name || '').length > 16
+    ? (team.team_name || '').substring(0, 15) + '…'
+    : (team.team_name || '');
+  const isTop = p >= 0.15;
+
+  return `<div class="team-card${isTop ? ' top-contender' : ''}" title="${team.team_name} — ${fmtPct(p)}">
+    <div class="prob-bar" style="background:${color}"></div>
+    <div class="seed-box ${sc}">${team.seed || '?'}</div>
+    <div class="team-name-card">${name}</div>
+    ${p > 0 ? `<div class="prob-label ${probLabelClass(p)}">${fmtPct(p)}</div>` : ''}
+  </div>`;
+}
+
+function buildBracketRegion(teams, probField, side) {
+  // Standard bracket seed matchups in order:
+  // Game 1: 1 vs 16, Game 2: 8 vs 9, Game 3: 5 vs 12, Game 4: 4 vs 13
+  // Game 5: 6 vs 11, Game 6: 3 vs 14, Game 7: 7 vs 10, Game 8: 2 vs 15
+  const seedOrder = [[1,16],[8,9],[5,12],[4,13],[6,11],[3,14],[7,10],[2,15]];
+  const bySeeds = {};
+  teams.forEach(t => { bySeeds[t.seed] = t; });
+
+  // Build matchup pairs
+  const matchups = seedOrder.map(([s1, s2]) => ({
+    top: bySeeds[s1] || null,
+    bot: bySeeds[s2] || null,
+  }));
+
+  // Build 4 rounds of columns for this region
+  // Round 1 (R64): 8 matchups
+  // Round 2 (R32): 4 matchups (winners of R64 pairs)
+  // Round 3 (S16): 2 matchups
+  // Round 4 (E8):  1 matchup
+
+  const ROUND_FIELDS = [
+    'Round of 64_prob',
+    'Round of 32_prob',
+    'Sweet 16_prob',
+    'Elite 8_prob',
+  ];
+
+  let html = `<div class="region-${side}">`;
+
+  // Round columns
+  for (let rnd = 0; rnd < 4; rnd++) {
+    const field    = ROUND_FIELDS[rnd];
+    const nGroups  = matchups.length / Math.pow(2, rnd);
+    const spacing  = Math.pow(2, rnd);
+
+    html += `<div class="round-col">`;
+
+    for (let g = 0; g < 8 / Math.pow(2, rnd); g++) {
+      const topIdx = g * Math.pow(2, rnd);
+      const botIdx = topIdx + Math.pow(2, rnd) - 1;
+
+      const topTeam = (rnd === 0)
+        ? matchups[g].top
+        : getBestTeamFromRange(matchups, topIdx, botIdx, field);
+
+      const botTeam = (rnd === 0)
+        ? matchups[g].bot
+        : getBestTeamFromRange(matchups, topIdx + Math.pow(2, rnd - 1), botIdx, field);
+
+      const groupH = Math.pow(2, rnd) * (36 + 2) - 2;
+      const topOffset = Math.pow(2, rnd - 1) * (36 + 2) - (36 / 2);
+      const botOffsetFromTop = Math.pow(2, rnd) * (36 + 2) - (36 + 2) - (36 / 2) + (36 / 2);
+
+      // For rnd > 0, we show the winner of the upper/lower half
+      if (rnd === 0) {
+        html += `<div class="matchup-group" style="margin-bottom:2px">`;
+        html += teamCard(topTeam, field);
+        html += `<div style="height:2px"></div>`;
+        html += teamCard(botTeam, field);
+        html += `</div>`;
+        if (g < 8 / Math.pow(2, rnd) - 1) {
+          html += `<div style="height:${Math.pow(2, rnd) * 2}px"></div>`;
+        }
+      } else {
+        const spacerH = (Math.pow(2, rnd) - 1) * (36 + 2);
+        html += `<div style="display:flex;flex-direction:column;gap:0;margin-bottom:${g < 8/Math.pow(2,rnd)-1 ? Math.pow(2,rnd)*4 : 0}px">`;
+        html += `<div style="height:${spacerH/2}px"></div>`;
+        html += teamCard(topTeam, field);
+        html += `<div style="height:${spacerH}px"></div>`;
+        html += teamCard(botTeam, field);
+        html += `<div style="height:${spacerH/2}px"></div>`;
+        html += `</div>`;
+      }
+    }
+
+    html += `</div>`;
+  }
+
+  html += `</div>`;
+  return html;
+}
+
+function getBestTeamFromRange(matchups, start, end, field) {
+  // From a range of matchup slots, find the team with highest probability
+  let best = null, bestP = -1;
+  for (let i = start; i <= end; i++) {
+    if (!matchups[i]) continue;
+    [matchups[i].top, matchups[i].bot].forEach(t => {
+      if (t && (t[field] || 0) > bestP) {
+        bestP = t[field] || 0;
+        best  = t;
+      }
+    });
+  }
+  return best;
+}
+
+function renderBracket() {
+  const regions = getTeamsByRegion();
+  const regionKeys = Object.keys(regions)
+    .filter(r => r !== 'First Four')
+    .sort();
+
+  // Expect 4 regions — split into top (1+2) and bottom (3+4)
+  const top    = regionKeys.slice(0, 2);
+  const bottom = regionKeys.slice(2, 4);
+
+  // Find top champion
+  const champ = [...allTeams].sort((a,b) =>
+    (b['Champion_prob']||0) - (a['Champion_prob']||0))[0];
+
+  // Final Four teams (top 4 by Final Four prob, one per region)
+  const ffTeams = regionKeys.map(r => {
+    const rt = (regions[r] || []).sort((a,b) =>
+      (b['Final Four_prob']||0) - (a['Final Four_prob']||0));
+    return rt[0] || null;
+  });
+
+  let html = '';
+
+  const buildHalf = (leftKey, rightKey, ffLeft, ffRight, halfLabel) => {
+    let h = `<div class="bracket-half">`;
+    h += `<div class="half-label">${halfLabel}</div>`;
+    h += `<div class="bracket-row">`;
+
+    // Left region
+    h += `<div class="region-wrap">`;
+    h += `<div class="region-pill">${leftKey}</div>`;
+    h += buildBracketRegion(regions[leftKey] || [], 'Final Four_prob', 'left');
+    h += `</div>`;
+
+    // Center — Final Four + Champion
+    h += `<div class="ff-center">`;
+    h += `<div class="ff-label">Final Four</div>`;
+    if (ffLeft) {
+      h += `<div style="margin:4px 0">`;
+      h += teamCard(ffLeft, 'Final Four_prob');
+      h += `</div>`;
+    }
+    if (halfLabel.includes('1') && champ) {
+      h += `<div class="ff-champion">`;
+      h += `<div class="champ-label">🏆 Projected Champion</div>`;
+      h += `<div class="champ-name">${champ.team_name}</div>`;
+      h += `<div class="champ-prob">${fmtPct(champ['Champion_prob'])}</div>`;
+      h += `</div>`;
+    }
+    if (ffRight) {
+      h += `<div style="margin:4px 0">`;
+      h += teamCard(ffRight, 'Final Four_prob');
+      h += `</div>`;
+    }
+    h += `</div>`;
+
+    // Right region
+    h += `<div class="region-wrap">`;
+    h += `<div class="region-pill" style="background:var(--accent);align-self:flex-end">${rightKey}</div>`;
+    h += buildBracketRegion(regions[rightKey] || [], 'Final Four_prob', 'right');
+    h += `</div>`;
+
+    h += `</div></div>`;
+    return h;
+  };
+
+  if (top.length >= 2) {
+    html += buildHalf(top[0], top[1], ffTeams[0], ffTeams[1], 'Bracket Half 1');
+  }
+  if (bottom.length >= 2) {
+    html += buildHalf(bottom[0], bottom[1], ffTeams[2], ffTeams[3], 'Bracket Half 2');
+  }
+
+  // First Four section
+  const firstFour = allTeams.filter(t => t.region === 'First Four');
+  if (firstFour.length > 0) {
+    html += `<div style="margin-top:16px;background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:12px 16px;">`;
+    html += `<div style="font-family:'Barlow Condensed',sans-serif;font-size:0.8rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;border-bottom:2px solid var(--border);padding-bottom:6px;">First Four Play-In Teams</div>`;
+    html += `<div style="display:flex;gap:16px;flex-wrap:wrap;">`;
+    firstFour.forEach(t => {
+      html += `<div style="display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:6px 10px;">`;
+      html += `<span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:0.72rem;color:var(--muted);background:white;border:1px solid var(--border);border-radius:2px;padding:1px 5px;">${t.seed}</span>`;
+      html += `<span style="font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:0.85rem;">${t.team_name}</span>`;
+      html += `<span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:0.78rem;color:var(--green);">R64: ${fmtPct(t['Round of 64_prob'])}</span>`;
+      html += `<span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:0.78rem;color:var(--orange);">WIN: ${fmtPct(t['Champion_prob'])}</span>`;
+      html += `</div>`;
+    });
+    html += `</div></div>`;
+  }
+
+  document.getElementById('bracket-content').innerHTML = html;
+}
+
+// ─── Table rendering ──────────────────────────────────────────────────────────
+function buildTableHeaders() {
+  const cols = [
+    { key: 'team_name', label: 'Team' },
+    { key: 'region',    label: 'Region' },
+    ...ROUND_COLS.map(c => ({ key: c, label: ROUND_SHORT[c] })),
+  ];
+  document.getElementById('table-headers').innerHTML = cols.map(c => `
+    <th onclick="setSort('${c.key}')" class="${sortCol === c.key ? 'sorted' : ''}">
+      ${c.label} ${sortCol === c.key ? (sortDir < 0 ? '▼' : '▲') : ''}
+    </th>
+  `).join('');
+}
+
 function renderTable() {
-  const search  = document.getElementById('search').value.toLowerCase();
-  const region  = document.getElementById('region-filter').value;
-  const seedF   = document.getElementById('seed-filter').value;
+  const search = document.getElementById('search').value.toLowerCase();
+  const region = document.getElementById('region-filter').value;
+  const seedF  = document.getElementById('seed-filter').value;
 
   let data = allTeams.filter(t => {
     if (search && !t.team_name.toLowerCase().includes(search)) return false;
@@ -648,92 +990,64 @@ function renderTable() {
   });
 
   data.sort((a, b) => {
-    const av = a[sortCol] ?? -1;
-    const bv = b[sortCol] ?? -1;
+    const av = typeof a[sortCol] === 'number' ? a[sortCol] : -999;
+    const bv = typeof b[sortCol] === 'number' ? b[sortCol] : -999;
     return sortDir * (bv - av);
   });
 
-  const tbody = document.getElementById('table-body');
-  tbody.innerHTML = data.map(t => {
-    const seedClass = seedBadgeClass(t.seed);
-    let html = `<tr>
-      <td>
-        <div class="td-team">
-          <span class="td-seed ${seedClass}">${t.seed}</span>
-          <span class="td-name">${t.team_name}</span>
-        </div>
-      </td>
+  document.getElementById('table-body').innerHTML = data.map(t => {
+    const sc = seedClass(t.seed);
+    let row = `<tr>
+      <td><div class="td-team">
+        <span class="td-seed-box ${sc}">${t.seed || '?'}</span>
+        <span class="td-name">${t.team_name}</span>
+      </div></td>
       <td class="td-region">${t.region}</td>`;
 
     ROUND_COLS.forEach(col => {
-      const p = t[col] || 0;
-      const cls = probClass(p);
-      const barW = Math.round(p * 60);
+      const p   = t[col] || 0;
+      const cls = heatClass(p);
       if (col === 'Champion_prob') {
-        html += `<td class="champ-cell ${cls}">${fmtPct(p)}</td>`;
+        row += `<td class="champ-cell ${cls}">${fmtPct(p)}</td>`;
       } else {
-        html += `<td class="prob-cell ${cls}">
-          <span class="pct">${fmtPct(p)}</span>
-          ${p > 0 ? `<span class="bar" style="width:${barW}px"></span>` : ''}
-        </td>`;
+        row += `<td class="prob-cell ${cls}">${fmtPct(p)}</td>`;
       }
     });
-
-    html += `</tr>`;
-    return html;
+    return row + `</tr>`;
   }).join('');
-}
-
-function buildTableHeaders() {
-  const cols = [
-    { key: 'team_name', label: 'Team' },
-    { key: 'region',    label: 'Region' },
-    ...ROUND_COLS.map(c => ({ key: c, label: ROUND_SHORT[c] })),
-  ];
-
-  document.getElementById('table-headers').innerHTML = cols.map(c => `
-    <th onclick="setSort('${c.key}')" class="${sortCol === c.key ? 'sorted' : ''}">
-      ${c.label}
-      <span class="sort-arrow">${sortCol === c.key ? (sortDir < 0 ? '↓' : '↑') : '↕'}</span>
-    </th>
-  `).join('');
-}
-
-function setSort(col) {
-  if (sortCol === col) { sortDir *= -1; }
-  else { sortCol = col; sortDir = -1; }
-  buildTableHeaders();
-  renderTable();
 }
 
 function buildFilters() {
   const regions = [...new Set(allTeams.map(t => t.region))].sort();
-  const seeds   = [...new Set(allTeams.map(t => t.seed))].sort((a,b) => a-b);
-
+  const seeds   = [...new Set(allTeams.map(t => t.seed).filter(Boolean))].sort((a,b)=>a-b);
   const rSel = document.getElementById('region-filter');
-  regions.forEach(r => { rSel.innerHTML += `<option value="${r}">${r}</option>`; });
-
+  regions.forEach(r => rSel.innerHTML += `<option value="${r}">${r}</option>`);
   const sSel = document.getElementById('seed-filter');
-  seeds.forEach(s => { sSel.innerHTML += `<option value="${s}">Seed ${s}</option>`; });
+  seeds.forEach(s => sSel.innerHTML += `<option value="${s}">Seed ${s}</option>`);
+}
+
+function setSort(col) {
+  if (sortCol === col) sortDir *= -1;
+  else { sortCol = col; sortDir = -1; }
+  buildTableHeaders();
+  renderTable();
 }
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 async function init() {
   try {
     const resp = await fetch('bracket_predictions.csv');
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status} — make sure bracket_predictions.csv is in the docs/ folder`);
     const text = await resp.text();
     allTeams = parseCSV(text);
 
-    // Update header stats
-    const topChamp = [...allTeams].sort((a,b) =>
-      (b['Champion_prob']||0) - (a['Champion_prob']||0))[0];
-    const n = allTeams.length;
-    document.getElementById('header-stats').innerHTML = `
-      <div><strong>${n}</strong> teams in field</div>
-      <div>Favorite: <strong>${topChamp?.team_name}</strong> (${fmtPct(topChamp?.['Champion_prob']||0)})</div>
-      <div>Simulation: <strong>10,000</strong> Monte Carlo iterations</div>
-    `;
+    // Header stats
+    const topChamp = [...allTeams].sort((a,b)=>
+      (b['Champion_prob']||0)-(a['Champion_prob']||0))[0];
+    const r64teams = allTeams.filter(t => t.region !== 'First Four');
+    document.getElementById('stat-teams').textContent   = r64teams.length;
+    document.getElementById('stat-favorite').textContent = topChamp?.team_name?.split(' ').slice(-1)[0] || '—';
+    document.getElementById('stat-fav-prob').textContent = fmtPct(topChamp?.['Champion_prob'] || 0);
 
     document.getElementById('loading').style.display = 'none';
 
@@ -742,13 +1056,11 @@ async function init() {
     renderBracket();
     renderTable();
 
-    // Show first tab
     document.getElementById('bracket-panel').style.display = 'block';
 
-  } catch (err) {
+  } catch(err) {
     document.getElementById('loading').innerHTML =
-      `<span style="color:var(--hot)">Error loading data: ${err.message}.<br>
-      Make sure bracket_predictions.csv is in the same folder as index.html (docs/).</span>`;
+      `<span style="color:var(--accent)">❌ ${err.message}</span>`;
   }
 }
 
